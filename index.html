@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusConnect - 校園通訊 (Lite)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- UI Config & Custom Styles -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1', // Indigo-500
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c7c7c7; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0; 
+        }
+        .loader {
+            border-top-color: #4f46e5;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen overflow-hidden font-sans text-gray-800">
+
+    <!-- ================= Login Screen ================= -->
+    <div id="login-screen" class="fixed inset-0 z-50 bg-brand-50 flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+            <div class="mb-6 flex justify-center">
+                <div class="w-16 h-16 bg-brand-600 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-graduation-cap text-white text-3xl"></i>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">CampusConnect</h1>
+            <p class="text-gray-500 mb-8">連接校園，即時溝通</p>
+            
+            <button id="google-login-btn" class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-sm">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6" alt="Google">
+                使用 Google 帳號登入
+            </button>
+            <p class="mt-4 text-xs text-gray-400">無需信用卡，使用 Firebase 免費方案</p>
+        </div>
+    </div>
+
+    <!-- ================= Main App ================= -->
+    <div id="app-screen" class="flex h-full hidden">
+        
+        <!-- Sidebar (Contacts & Groups) -->
+        <div id="sidebar" class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col h-full absolute md:relative z-20 transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+            <!-- Sidebar Header -->
+            <div class="p-4 bg-brand-600 text-white flex justify-between items-center shadow-md">
+                <div class="flex items-center gap-3" id="current-user-display">
+                    <!-- User Info injected here -->
+                    <div class="w-10 h-10 rounded-full bg-gray-300 animate-pulse"></div>
+                    <div>
+                        <div class="h-4 w-20 bg-brand-500 rounded animate-pulse mb-1"></div>
+                        <div class="h-3 w-12 bg-brand-500 rounded animate-pulse"></div>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="app.showQRModal()" class="hover:text-brand-100" title="我的 QR Code"><i class="fa-solid fa-qrcode"></i></button>
+                    <button onclick="auth.signOut()" class="hover:text-brand-100" title="登出"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </div>
+
+            <!-- Search & Actions -->
+            <div class="p-4 border-b border-gray-100">
+                <div class="relative mb-3">
+                    <input type="text" id="search-input" placeholder="搜尋學號或 Email..." class="w-full pl-10 pr-4 py-2 border rounded-full bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                    <i class="fa-solid fa-search absolute left-4 top-3 text-gray-400"></i>
+                    <button id="search-btn" class="absolute right-2 top-1.5 bg-brand-600 text-white px-3 py-1 rounded-full text-xs hover:bg-brand-700">搜尋</button>
+                </div>
+                <button onclick="app.showCreateGroupModal()" class="w-full py-2 border-2 border-dashed border-brand-300 text-brand-600 rounded-lg hover:bg-brand-50 text-sm font-semibold transition">
+                    <i class="fa-solid fa-plus mr-1"></i> 建立新群組
+                </button>
+            </div>
+
+            <!-- Chat List -->
+            <div id="chat-list" class="flex-1 overflow-y-auto">
+                <!-- Chat items injected here -->
+                <div class="text-center text-gray-400 mt-10 text-sm">載入中...</div>
+            </div>
+            
+            <!-- Mobile Close Sidebar -->
+            <button onclick="ui.toggleSidebar()" class="md:hidden absolute top-4 right-[-3rem] bg-white p-2 rounded-r shadow text-brand-600">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="flex-1 flex flex-col bg-gray-50 relative w-full">
+            
+            <!-- Mobile Menu Toggle -->
+            <div class="md:hidden p-4 bg-white border-b flex items-center shadow-sm">
+                <button onclick="ui.toggleSidebar()" class="mr-4 text-brand-600"><i class="fa-solid fa-bars text-xl"></i></button>
+                <h2 class="font-bold text-lg text-gray-700">CampusConnect</h2>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-chat-state" class="flex-1 flex flex-col items-center justify-center text-gray-400">
+                <i class="fa-regular fa-comments text-6xl mb-4 text-gray-300"></i>
+                <p>選擇一個聯絡人或群組開始聊天</p>
+            </div>
+
+            <!-- Active Chat Interface -->
+            <div id="active-chat-interface" class="flex-1 flex flex-col hidden h-full">
+                <!-- Chat Header -->
+                <div class="bg-white p-4 border-b border-gray-200 flex justify-between items-center shadow-sm z-10">
+                    <div class="flex items-center gap-3">
+                        <img id="header-avatar" src="" class="w-10 h-10 rounded-full object-cover border border-gray-200">
+                        <div>
+                            <h3 id="header-title" class="font-bold text-gray-800"></h3>
+                            <span id="header-subtitle" class="text-xs text-gray-500"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages Area -->
+                <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <!-- Messages injected here -->
+                </div>
+
+                <!-- Input Area -->
+                <div class="bg-white p-4 border-t border-gray-200">
+                    <form id="message-form" class="flex items-center gap-3">
+                        <!-- Removed Image Upload Button -->
+                        <input type="text" id="message-input" class="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" placeholder="輸入訊息..." autocomplete="off">
+                        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white rounded-full w-10 h-10 flex items-center justify-center transition shadow-md">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= Modals ================= -->
+    
+    <!-- User Search Result Modal -->
+    <div id="search-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-96 max-w-full m-4">
+            <h3 class="text-lg font-bold mb-4">搜尋結果</h3>
+            <div id="search-results" class="space-y-3">
+                <!-- Results -->
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button onclick="document.getElementById('search-modal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 px-4 py-2">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div id="group-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-96 max-w-full m-4">
+            <h3 class="text-lg font-bold mb-4">建立新群組</h3>
+            <input type="text" id="group-name" placeholder="群組名稱" class="w-full border p-2 rounded mb-4">
+            <p class="text-sm text-gray-500 mb-2">加入成員 (輸入 Email 搜尋):</p>
+            <div class="flex gap-2 mb-2">
+                <input type="text" id="group-member-search" class="flex-1 border p-2 rounded text-sm">
+                <button id="add-member-btn" class="bg-gray-200 px-3 rounded hover:bg-gray-300"><i class="fa-solid fa-plus"></i></button>
+            </div>
+            <div id="group-members-list" class="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded mb-4 text-sm space-y-1">
+                <!-- Selected members -->
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('group-modal').classList.add('hidden')" class="px-4 py-2 text-gray-500">取消</button>
+                <button id="create-group-btn" class="px-4 py-2 bg-brand-600 text-white rounded">建立</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-8 flex flex-col items-center">
+            <h3 class="text-xl font-bold mb-2">我的身分 QR Code</h3>
+            <p class="text-gray-500 text-sm mb-4">讓同學掃描加入好友</p>
+            <div id="qrcode" class="mb-4"></div>
+            <p id="my-student-id" class="font-mono bg-gray-100 px-3 py-1 rounded text-lg font-bold text-brand-600 tracking-wider"></p>
+            <button onclick="document.getElementById('qr-modal').classList.add('hidden')" class="mt-6 text-gray-500 hover:text-gray-800">關閉</button>
+        </div>
+    </div>
+
+    <!-- ================= JavaScript Logic ================= -->
+    <script type="module">
+        // Import Firebase SDKs (Removed Storage)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, setDoc, addDoc, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, arrayUnion, orderBy } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        // ================= CONFIGURATION =================
+        // TODO: 請在此處填入您的 Firebase 配置 (不需要 Storage Bucket)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRW_kRczHRAnllzoAjF1GSSX_5wCtV_P4",
+			authDomain: "campus-im-system.firebaseapp.com",
+			projectId: "campus-im-system",
+			storageBucket: "campus-im-system.firebasestorage.app",
+			messagingSenderId: "47089303225",
+			appId: "1:47089303225:web:acdd77342913588e0d2568",
+			measurementId: "G-EZD4BF0BWR"
+        };
+
+        // Initialize Firebase
+        let app, auth, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            // Removed Storage Initialization
+        } catch (e) {
+            console.error("Firebase 初始化失敗，請檢查 Config。", e);
+            alert("請編輯 HTML 檔案填入正確的 Firebase Config！");
+        }
+
+        // ================= STATE & GLOBALS =================
+        let currentUser = null;
+        let currentChatId = null;
+        let unsubscribeMessages = null;
+        let pendingGroupMembers = []; 
+
+        // ================= UI HELPERS =================
+        const ui = {
+            toggleSidebar: () => {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.remove('-translate-x-full');
+                } else {
+                    sidebar.classList.add('-translate-x-full');
+                }
+            },
+            formatTime: (timestamp) => {
+                if (!timestamp) return '';
+                const date = timestamp.toDate();
+                return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+            },
+            scrollToBottom: () => {
+                const container = document.getElementById('messages-container');
+                container.scrollTop = container.scrollHeight;
+            }
+        };
+
+        // ================= AUTH LOGIC =================
+        const authLogic = {
+            login: async () => {
+                const provider = new GoogleAuthProvider();
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    console.error("Login failed", error);
+                    alert("登入失敗: " + error.message);
+                }
+            },
+            handleUserSetup: async (user) => {
+                const userRef = doc(db, "users", user.uid);
+                const userSnap = await getDoc(userRef);
+
+                if (!userSnap.exists()) {
+                    const studentId = Math.floor(100000 + Math.random() * 900000).toString();
+                    await setDoc(userRef, {
+                        uid: user.uid,
+                        displayName: user.displayName,
+                        email: user.email,
+                        photoURL: user.photoURL, // 這是 Google 提供的 URL，不需要 Storage
+                        studentId: studentId,
+                        createdAt: serverTimestamp(),
+                        contacts: []
+                    });
+                }
+            },
+            updateProfileUI: (user) => {
+                getDoc(doc(db, "users", user.uid)).then(snap => {
+                    const data = snap.data();
+                    const container = document.getElementById('current-user-display');
+                    container.innerHTML = `
+                        <img src="${data.photoURL}" class="w-10 h-10 rounded-full border-2 border-brand-400">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm truncate w-32">${data.displayName}</span>
+                            <span class="text-xs text-brand-200">ID: ${data.studentId}</span>
+                        </div>
+                    `;
+                    document.getElementById('qrcode').innerHTML = "";
+                    new QRCode(document.getElementById("qrcode"), {
+                        text: `cc:${data.email}`,
+                        width: 128,
+                        height: 128
+                    });
+                    document.getElementById('my-student-id').innerText = data.studentId;
+                });
+            }
+        };
+
+        document.getElementById('google-login-btn').addEventListener('click', authLogic.login);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('login-screen').classList.add('hidden'); 
+                document.getElementById('app-screen').classList.remove('hidden');
+                
+                await authLogic.handleUserSetup(user);
+                authLogic.updateProfileUI(user);
+                chatLogic.listenToChats();
+            } else {
+                currentUser = null;
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('app-screen').classList.add('hidden');
+            }
+        });
+
+        // ================= APP LOGIC =================
+        window.auth = auth; 
+        window.ui = ui;
+
+        window.app = {
+            showQRModal: () => document.getElementById('qr-modal').classList.remove('hidden'),
+            showCreateGroupModal: () => {
+                pendingGroupMembers = [];
+                document.getElementById('group-members-list').innerHTML = '';
+                document.getElementById('group-name').value = '';
+                document.getElementById('group-modal').classList.remove('hidden');
+            },
+            startPrivateChat: async (targetUid) => {
+                document.getElementById('search-modal').classList.add('hidden');
+                
+                const q = query(
+                    collection(db, "chats"), 
+                    where("type", "==", "private"),
+                    where("members", "array-contains", currentUser.uid)
+                );
+                
+                const querySnapshot = await getDocs(q);
+                let existingChatId = null;
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.members.includes(targetUid)) {
+                        existingChatId = doc.id;
+                    }
+                });
+
+                if (existingChatId) {
+                    chatLogic.loadChat(existingChatId);
+                } else {
+                    const newChatRef = await addDoc(collection(db, "chats"), {
+                        type: "private",
+                        members: [currentUser.uid, targetUid],
+                        updatedAt: serverTimestamp(),
+                        lastMessage: "新對話已建立"
+                    });
+                    chatLogic.loadChat(newChatRef.id);
+                }
+                
+                if(window.innerWidth < 768) ui.toggleSidebar();
+            }
+        };
+
+        // ================= CHAT LOGIC =================
+        const chatLogic = {
+            listenToChats: () => {
+                const q = query(
+                    collection(db, "chats"), 
+                    where("members", "array-contains", currentUser.uid),
+                    orderBy("updatedAt", "desc")
+                );
+
+                onSnapshot(q, (snapshot) => {
+                    const listEl = document.getElementById('chat-list');
+                    listEl.innerHTML = '';
+                    
+                    snapshot.forEach(async (chatDoc) => {
+                        const data = chatDoc.data();
+                        const chatId = chatDoc.id;
+                        
+                        let title = "Chat";
+                        let avatar = "https://via.placeholder.com/40";
+                        
+                        if (data.type === 'private') {
+                            const otherId = data.members.find(id => id !== currentUser.uid);
+                            const userSnap = await getDoc(doc(db, "users", otherId));
+                            if(userSnap.exists()) {
+                                const userData = userSnap.data();
+                                title = userData.displayName;
+                                avatar = userData.photoURL;
+                            }
+                        } else {
+                            title = data.groupName || "群組";
+                            avatar = "https://ui-avatars.com/api/?background=6366f1&color=fff&name=" + title;
+                        }
+
+                        const timeStr = data.updatedAt ? ui.formatTime(data.updatedAt) : '';
+                        const isActive = chatId === currentChatId ? 'bg-blue-50 border-l-4 border-brand-500' : 'hover:bg-gray-50 border-l-4 border-transparent';
+
+                        const itemHtml = `
+                            <div onclick="chatLogic.loadChat('${chatId}')" class="p-4 border-b border-gray-100 cursor-pointer transition ${isActive}">
+                                <div class="flex items-center gap-3">
+                                    <img src="${avatar}" class="w-12 h-12 rounded-full object-cover">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <h4 class="font-bold text-gray-800 truncate text-sm">${title}</h4>
+                                            <span class="text-xs text-gray-400">${timeStr}</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500 truncate">${data.lastMessage || '無訊息'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        const div = document.createElement('div');
+                        div.innerHTML = itemHtml;
+                        listEl.appendChild(div.firstElementChild);
+                    });
+                });
+            },
+
+            loadChat: async (chatId) => {
+                currentChatId = chatId;
+                document.getElementById('empty-chat-state').classList.add('hidden');
+                document.getElementById('active-chat-interface').classList.remove('hidden');
+                document.getElementById('active-chat-interface').classList.add('flex');
+
+                const chatDoc = await getDoc(doc(db, "chats", chatId));
+                const data = chatDoc.data();
+                const headerTitle = document.getElementById('header-title');
+                const headerSub = document.getElementById('header-subtitle');
+                const headerImg = document.getElementById('header-avatar');
+
+                if (data.type === 'private') {
+                    const otherId = data.members.find(id => id !== currentUser.uid);
+                    const userSnap = await getDoc(doc(db, "users", otherId));
+                    if(userSnap.exists()) {
+                        headerTitle.innerText = userSnap.data().displayName;
+                        headerSub.innerText = userSnap.data().email;
+                        headerImg.src = userSnap.data().photoURL;
+                    }
+                } else {
+                    headerTitle.innerText = data.groupName;
+                    headerSub.innerText = `${data.members.length} 位成員`;
+                    headerImg.src = `https://ui-avatars.com/api/?background=6366f1&color=fff&name=${data.groupName}`;
+                }
+
+                if (unsubscribeMessages) unsubscribeMessages();
+                
+                const q = query(
+                    collection(db, "chats", chatId, "messages"),
+                    orderBy("timestamp", "asc")
+                );
+
+                unsubscribeMessages = onSnapshot(q, (snapshot) => {
+                    const container = document.getElementById('messages-container');
+                    container.innerHTML = ''; 
+
+                    snapshot.forEach((doc) => {
+                        const msg = doc.data();
+                        const isMe = msg.senderId === currentUser.uid;
+                        
+                        const bubbleClass = isMe 
+                            ? 'bg-brand-600 text-white rounded-br-none' 
+                            : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none';
+                        
+                        const alignClass = isMe ? 'justify-end' : 'justify-start';
+
+                        const html = `
+                            <div class="flex ${alignClass} mb-4">
+                                ${!isMe ? `<img src="${msg.senderAvatar}" class="w-8 h-8 rounded-full mr-2 self-end mb-1" title="${msg.senderName}">` : ''}
+                                <div class="max-w-[70%]">
+                                    ${!isMe ? `<p class="text-xs text-gray-500 mb-1 ml-1">${msg.senderName}</p>` : ''}
+                                    <div class="px-4 py-2 rounded-2xl shadow-sm ${bubbleClass} break-words">
+                                        <p class="text-sm">${msg.text}</p>
+                                    </div>
+                                    <p class="text-[10px] text-gray-400 mt-1 ${isMe ? 'text-right mr-1' : 'ml-1'}">
+                                        ${msg.timestamp ? ui.formatTime(msg.timestamp) : '傳送中...'}
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                        container.insertAdjacentHTML('beforeend', html);
+                    });
+                    ui.scrollToBottom();
+                });
+            }
+        };
+        window.chatLogic = chatLogic;
+
+        // ================= SEARCH LOGIC =================
+        document.getElementById('search-btn').addEventListener('click', async () => {
+            const term = document.getElementById('search-input').value.trim();
+            if (!term) return;
+
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '<div class="flex justify-center"><div class="loader w-6 h-6 border-2 rounded-full"></div></div>';
+            document.getElementById('search-modal').classList.remove('hidden');
+
+            let q = query(collection(db, "users"), where("email", "==", term));
+            let snap = await getDocs(q);
+
+            if (snap.empty) {
+                q = query(collection(db, "users"), where("studentId", "==", term));
+                snap = await getDocs(q);
+            }
+
+            resultsContainer.innerHTML = '';
+            
+            if (snap.empty) {
+                resultsContainer.innerHTML = '<p class="text-gray-500 text-center">找不到使用者。</p>';
+                return;
+            }
+
+            snap.forEach(doc => {
+                const user = doc.data();
+                if (user.uid === currentUser.uid) return; 
+
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100";
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${user.photoURL}" class="w-10 h-10 rounded-full">
+                        <div>
+                            <p class="font-bold text-sm">${user.displayName}</p>
+                            <p class="text-xs text-gray-500">${user.email}</p>
+                        </div>
+                    </div>
+                    <button onclick="app.startPrivateChat('${user.uid}')" class="text-brand-600 hover:text-brand-800">
+                        <i class="fa-regular fa-paper-plane text-xl"></i>
+                    </button>
+                `;
+                resultsContainer.appendChild(div);
+            });
+            
+            if(resultsContainer.innerHTML === '') {
+                 resultsContainer.innerHTML = '<p class="text-gray-500 text-center">那是你自己。</p>';
+            }
+        });
+
+        // ================= SEND MESSAGE (Text Only) =================
+        const form = document.getElementById('message-form');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentChatId || !currentUser) return;
+
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            input.value = '';
+            
+            try {
+                // Send to Firestore
+                const messageData = {
+                    senderId: currentUser.uid,
+                    senderName: currentUser.displayName,
+                    senderAvatar: currentUser.photoURL,
+                    timestamp: serverTimestamp(),
+                    type: 'text',
+                    text: text,
+                    chatId: currentChatId
+                };
+
+                await addDoc(collection(db, "chats", currentChatId, "messages"), messageData);
+
+                await updateDoc(doc(db, "chats", currentChatId), {
+                    lastMessage: text,
+                    updatedAt: serverTimestamp()
+                });
+
+            } catch (error) {
+                console.error("Error sending message:", error);
+                alert("發送失敗");
+            }
+        });
+
+        // ================= GROUP CREATION LOGIC =================
+        document.getElementById('add-member-btn').addEventListener('click', async () => {
+            const email = document.getElementById('group-member-search').value.trim();
+            if (!email) return;
+
+            const q = query(collection(db, "users"), where("email", "==", email));
+            const snap = await getDocs(q);
+
+            if (!snap.empty) {
+                const user = snap.docs[0].data();
+                if (pendingGroupMembers.some(u => u.uid === user.uid)) {
+                    alert("已在清單中");
+                    return;
+                }
+                pendingGroupMembers.push(user);
+                
+                const list = document.getElementById('group-members-list');
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-white p-1 rounded border";
+                div.innerHTML = `<span>${user.displayName}</span>`;
+                list.appendChild(div);
+                
+                document.getElementById('group-member-search').value = '';
+            } else {
+                alert("找不到使用者");
+            }
+        });
+
+        document.getElementById('create-group-btn').addEventListener('click', async () => {
+            const name = document.getElementById('group-name').value.trim();
+            if (!name || pendingGroupMembers.length === 0) {
+                alert("請輸入群組名稱並至少加入一位成員");
+                return;
+            }
+
+            const memberIds = pendingGroupMembers.map(u => u.uid);
+            memberIds.push(currentUser.uid); 
+
+            try {
+                const newChatRef = await addDoc(collection(db, "chats"), {
+                    type: "group",
+                    groupName: name,
+                    members: memberIds,
+                    updatedAt: serverTimestamp(),
+                    lastMessage: "群組已建立"
+                });
+                
+                document.getElementById('group-modal').classList.add('hidden');
+                chatLogic.loadChat(newChatRef.id);
+            } catch (e) {
+                console.error(e);
+                alert("建立失敗");
+            }
+        });
+
+    </script>
+</body>
+</html>

@@ -3,99 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CampusConnect (Debug Mode)</title>
+    <title>CampusConnect</title>
     
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- QR Code Generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script>
         tailwind.config = {
             theme: {
-                extend: { colors: { brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' } } }
+                extend: {
+                    colors: {
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+                    }
+                }
             }
         }
     </script>
     <style>
-        /* 除錯視窗樣式 */
-        #debug-console {
-            position: fixed; top: 0; left: 0; right: 0; height: 150px;
-            background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace;
-            font-size: 10px; overflow-y: scroll; z-index: 9999; padding: 5px;
-            pointer-events: none; /* 讓點擊穿透 */
-            display: none; /* 預設隱藏，有錯誤時開啟 */
-        }
-        .log-line { border-bottom: 1px solid #333; padding: 2px 0; }
-        .log-error { color: #ff5555; font-weight: bold; }
         ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        .msg-menu { display: none; }
+        .msg-bubble:hover .msg-menu { display: flex; }
+        @media (max-width: 768px) {
+            .msg-menu { display: flex; opacity: 0.5; } 
+        }
+        /* Loading Spinner Animation */
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            width: 24px; height: 24px; border-radius: 50%;
+            border-left-color: #4f46e5;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-gray-100 h-screen overflow-hidden font-sans text-gray-800">
 
-    <!-- Debug Console -->
-    <div id="debug-console"></div>
-
     <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 z-50 bg-brand-50 flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="bg-white p-8 rounded-2xl shadow-xl w-11/12 max-w-md text-center">
-            <h1 class="text-3xl font-bold text-gray-900 mb-6">CampusConnect</h1>
-            
-            <!-- 增加：強制 Popup 模式按鈕 (備用方案) -->
-            <button id="google-login-btn-popup" class="w-full flex items-center justify-center gap-3 bg-brand-600 text-white font-semibold py-3 px-4 rounded-lg shadow-sm mb-3">
-                <i class="fa-brands fa-google"></i> Google 登入 (彈窗模式)
-            </button>
-            
-            <!-- 增加：強制 Redirect 模式按鈕 -->
-            <button id="google-login-btn-redirect" class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg shadow-sm">
-                <i class="fa-brands fa-google"></i> Google 登入 (跳轉模式)
-            </button>
-
-            <div id="login-loading" class="hidden mt-4 text-brand-600 font-bold">
-                <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> 處理中...請稍候
+            <div class="mb-6 flex justify-center">
+                <div class="w-16 h-16 bg-brand-600 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-graduation-cap text-white text-3xl"></i>
+                </div>
             </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">CampusConnect</h1>
+            <p class="text-gray-500 mb-6">連接校園，即時溝通</p>
             
-            <p class="mt-4 text-xs text-gray-400">若上方按鈕無反應，請截圖頂部的黑色代碼視窗</p>
+            <button id="google-login-btn" class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-sm">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6">
+                <span>使用 Google 帳號登入</span>
+            </button>
+            
+            <div id="login-loading" class="hidden mt-6 flex flex-col items-center justify-center text-brand-600 text-sm font-bold">
+                <div class="spinner mb-2"></div>
+                正在登入中...
+            </div>
         </div>
     </div>
 
-    <!-- Main App (維持原樣，略過重複部分以節省篇幅，核心邏輯在下方 Script) -->
+    <!-- Main App -->
     <div id="app-screen" class="flex h-full hidden w-full relative">
+        
+        <!-- LEFT SIDEBAR -->
         <div id="sidebar" class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col h-full z-10">
+            <!-- Header -->
             <div class="p-4 bg-brand-600 text-white flex justify-between items-center shadow-md shrink-0">
                 <div class="flex items-center gap-3 cursor-pointer">
-                    <div id="my-avatar" class="w-10 h-10 rounded-full bg-gray-300 bg-cover"></div>
-                    <div><div id="my-name" class="font-bold text-sm truncate w-32"></div></div>
+                    <div id="my-avatar" class="w-10 h-10 rounded-full bg-gray-300 bg-cover border-2 border-white/30"></div>
+                    <div class="overflow-hidden">
+                        <div id="my-name" class="font-bold text-sm truncate w-32">載入中...</div>
+                        <div id="my-id" class="text-xs text-brand-200">ID: ...</div>
+                    </div>
                 </div>
-                <button onclick="auth.signOut()"><i class="fa-solid fa-right-from-bracket"></i></button>
+                <div class="flex gap-3">
+                    <button onclick="app.showQRModal()" class="hover:text-brand-100"><i class="fa-solid fa-qrcode"></i></button>
+                    <button onclick="auth.signOut()" class="hover:text-brand-100"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
             </div>
-            <!-- 簡化的列表 (用於測試登入) -->
-            <div class="flex-1 flex items-center justify-center text-gray-400 p-4 text-center">
-                登入成功！<br>這是偵錯模式，請確認手機是否能看到此畫面。
+
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-200 shrink-0">
+                <button onclick="ui.switchTab('chats')" id="tab-chats" class="flex-1 py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600 transition-colors">
+                    <i class="fa-regular fa-comments mr-1"></i> 聊天
+                </button>
+                <button onclick="ui.switchTab('contacts')" id="tab-contacts" class="flex-1 py-3 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-colors">
+                    <i class="fa-regular fa-address-book mr-1"></i> 聯絡人
+                </button>
+            </div>
+
+            <!-- Search -->
+            <div class="p-3 border-b border-gray-100 bg-gray-50 shrink-0">
+                <div class="relative">
+                    <input type="text" id="search-input" placeholder="搜尋新朋友 Email..." class="w-full pl-9 pr-12 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition shadow-sm">
+                    <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                    <button id="search-btn" class="absolute right-1 top-1 bg-brand-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-brand-700 transition">GO</button>
+                </div>
+            </div>
+
+            <!-- List -->
+            <div class="flex-1 overflow-y-auto relative bg-white">
+                <div id="chat-list" class="absolute inset-0 pb-20"></div>
+                <div id="contact-list" class="absolute inset-0 pb-20 hidden"></div>
+            </div>
+
+            <!-- FAB (Mobile) & Button (Desktop) -->
+            <button onclick="app.showCreateGroupModal()" class="absolute bottom-6 right-6 w-14 h-14 bg-brand-600 text-white rounded-full shadow-lg hover:bg-brand-700 md:hidden flex items-center justify-center transition transform hover:scale-105 active:scale-95 z-20">
+                <i class="fa-solid fa-plus text-xl"></i>
+            </button>
+             <button onclick="app.showCreateGroupModal()" class="hidden md:flex items-center justify-center w-full py-3 bg-gray-50 text-brand-600 border-t border-gray-200 hover:bg-brand-50 text-sm font-bold shrink-0 transition">
+                <i class="fa-solid fa-plus mr-2"></i> 建立新群組
+            </button>
+        </div>
+
+        <!-- RIGHT CHAT AREA -->
+        <div id="chat-area" class="flex-1 flex flex-col bg-gray-100 w-full md:static absolute inset-0 z-20 transform translate-x-full md:translate-x-0 transition-transform duration-300">
+            
+            <!-- Chat Header -->
+            <div class="bg-white p-3 border-b border-gray-200 flex items-center shadow-sm shrink-0 h-16">
+                <button onclick="ui.closeChat()" class="md:hidden mr-3 text-gray-600 px-2 py-1 rounded hover:bg-gray-100">
+                    <i class="fa-solid fa-arrow-left text-xl"></i>
+                </button>
+                <img id="header-avatar" src="" class="w-10 h-10 rounded-full bg-gray-200 object-cover border border-gray-100">
+                <div class="ml-3 flex-1 min-w-0">
+                    <h3 id="header-title" class="font-bold text-gray-800 truncate text-base"></h3>
+                    <div id="header-subtitle" class="text-xs text-gray-500 truncate"></div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f3f4f6]"></div>
+
+            <!-- Input -->
+            <div class="bg-white p-3 border-t border-gray-200 shrink-0">
+                <form id="message-form" class="flex items-end gap-2">
+                    <div class="flex-1 bg-gray-100 rounded-2xl px-4 py-2 border border-transparent focus-within:border-brand-300 focus-within:bg-white transition">
+                        <input type="text" id="message-input" class="w-full bg-transparent border-none focus:ring-0 text-sm outline-none" placeholder="輸入訊息..." autocomplete="off">
+                    </div>
+                    <button type="submit" class="bg-brand-600 text-white rounded-full w-10 h-10 flex items-center justify-center shrink-0 shadow-md hover:bg-brand-700 transition transform hover:scale-105 active:scale-95">
+                        <i class="fa-solid fa-paper-plane text-sm"></i>
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Context Menu Modal -->
+            <div id="msg-action-modal" class="fixed inset-0 bg-black bg-opacity-30 z-50 hidden flex items-end md:items-center justify-center" onclick="this.classList.add('hidden')">
+                <div class="bg-white w-full md:w-64 rounded-t-xl md:rounded-xl p-2 shadow-2xl animate-[slideUp_0.2s_ease-out]" onclick="event.stopPropagation()">
+                    <button onclick="app.handleEditMsg()" class="w-full text-left px-4 py-3 hover:bg-gray-50 text-blue-600 font-medium border-b border-gray-100 flex items-center"><i class="fa-solid fa-pen mr-3"></i> 編輯訊息</button>
+                    <button onclick="app.handleDeleteMsg()" class="w-full text-left px-4 py-3 hover:bg-gray-50 text-red-600 font-medium flex items-center"><i class="fa-solid fa-trash mr-3"></i> 刪除訊息</button>
+                    <button onclick="document.getElementById('msg-action-modal').classList.add('hidden')" class="w-full text-center px-4 py-3 text-gray-400 text-sm md:hidden bg-gray-50 mt-1 rounded-b-lg">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center relative">
+            <button onclick="document.getElementById('qr-modal').classList.add('hidden')" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h3 class="text-xl font-bold mb-1">我的 QR Code</h3>
+            <p class="text-gray-500 text-sm mb-6">讓朋友掃描以加入對話</p>
+            <div id="qrcode" class="mb-6 p-2 border-2 border-dashed border-brand-200 rounded-lg"></div>
+            <p class="text-xs text-gray-400 text-center">掃描後將自動開啟網頁並連結</p>
+        </div>
+    </div>
+
+    <div id="search-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold mb-4">搜尋結果</h3>
+            <div id="search-results" class="space-y-2 max-h-60 overflow-y-auto"></div>
+            <div class="mt-4 flex justify-end">
+                <button onclick="document.getElementById('search-modal').classList.add('hidden')" class="px-4 py-2 text-gray-500 hover:text-gray-700">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="group-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold mb-4">建立群組</h3>
+            <input type="text" id="group-name" placeholder="群組名稱" class="w-full border p-2 rounded mb-4 focus:border-brand-500 outline-none">
+            <p class="text-sm text-gray-500 mb-2">新增成員 Email:</p>
+            <div class="flex gap-2 mb-2">
+                <input type="text" id="group-member-search" class="flex-1 border p-2 rounded text-sm outline-none focus:border-brand-500">
+                <button id="add-member-btn" class="bg-gray-100 px-3 rounded hover:bg-gray-200 transition"><i class="fa-solid fa-plus"></i></button>
+            </div>
+            <div id="group-members-list" class="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded mb-4 text-sm space-y-1 border border-gray-100 min-h-[50px]"></div>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('group-modal').classList.add('hidden')" class="px-4 py-2 text-gray-500 hover:text-gray-700">取消</button>
+                <button id="create-group-btn" class="px-4 py-2 bg-brand-600 text-white rounded shadow hover:bg-brand-700 transition">建立</button>
             </div>
         </div>
     </div>
 
     <!-- ================= LOGIC ================= -->
     <script type="module">
-        // 1. 攔截 Console Log 顯示在螢幕上
-        const debugConsole = document.getElementById('debug-console');
-        function logToScreen(msg, type = 'info') {
-            debugConsole.style.display = 'block';
-            const div = document.createElement('div');
-            div.className = `log-line ${type === 'error' ? 'log-error' : ''}`;
-            div.innerText = `[${type.toUpperCase()}] ${msg}`;
-            debugConsole.appendChild(div);
-            debugConsole.scrollTop = debugConsole.scrollHeight;
-            console.log(msg);
-        }
-        window.onerror = function(message, source, lineno, colno, error) {
-            logToScreen(`${message} (${source}:${lineno})`, 'error');
-        };
-
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, setDoc, addDoc, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, orderBy, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ================= CONFIGURATION =================
         // TODO: 請務必重新填入您的 Config
@@ -111,91 +222,412 @@
 
         let app, auth, db;
         try {
-            logToScreen("初始化 Firebase...");
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-            logToScreen("Firebase 初始化成功");
-
-            // 處理 Redirect 結果 (手機跳轉回來後會觸發這裡)
-            getRedirectResult(auth)
-                .then((result) => {
-                    if (result) {
-                        logToScreen("Redirect 登入成功！User: " + result.user.email);
-                    } else {
-                        logToScreen("Redirect 無回傳結果 (可能是初次載入)");
-                    }
-                }).catch((error) => {
-                    logToScreen("Redirect 錯誤: " + error.message, 'error');
-                    alert("登入錯誤: " + error.message);
-                    document.getElementById('login-loading').classList.add('hidden');
-                });
-
+            
+            // 處理 Redirect 結果 (做為備案)
+            getRedirectResult(auth).catch((error) => {
+                console.error("Redirect Error:", error);
+                alert("登入錯誤：" + error.message);
+                document.getElementById('login-loading').classList.add('hidden');
+            });
         } catch (e) {
-            logToScreen("Config 錯誤: " + e.message, 'error');
-            alert("Firebase Config 錯誤，請檢查程式碼");
+            console.error(e);
+            alert("Firebase 初始化失敗，請填入 Config");
         }
 
-        // 登入邏輯
-        const provider = new GoogleAuthProvider();
+        // ================= STATE & GLOBALS =================
+        let currentUser = null;
+        let currentChatId = null;
+        let selectedMsgId = null;
+        let unsubscribeMessages = null;
+        let pendingGroupMembers = [];
 
-        // 方式 A: 彈窗 (電腦/部分手機適用)
-        document.getElementById('google-login-btn-popup').addEventListener('click', () => {
-            logToScreen("使用者點擊：Popup 登入");
-            document.getElementById('login-loading').classList.remove('hidden');
-            signInWithPopup(auth, provider)
-                .then(() => logToScreen("Popup 流程完成"))
-                .catch((error) => {
-                    document.getElementById('login-loading').classList.add('hidden');
-                    logToScreen("Popup 失敗: " + error.message + " | code: " + error.code, 'error');
-                    alert("Popup 失敗: " + error.message);
+        // ================= UI HELPERS =================
+        window.ui = {
+            switchTab: (tab) => {
+                const btnChat = document.getElementById('tab-chats');
+                const btnContact = document.getElementById('tab-contacts');
+                const activeClass = 'flex-1 py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600 transition-colors';
+                const inactiveClass = 'flex-1 py-3 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-colors';
+                
+                btnChat.className = tab === 'chats' ? activeClass : inactiveClass;
+                btnContact.className = tab === 'contacts' ? activeClass : inactiveClass;
+                
+                document.getElementById('chat-list').classList.toggle('hidden', tab !== 'chats');
+                document.getElementById('contact-list').classList.toggle('hidden', tab !== 'contacts');
+                if(tab === 'contacts') chatLogic.loadContacts();
+            },
+            openChat: () => document.getElementById('chat-area').classList.remove('translate-x-full'),
+            closeChat: () => {
+                currentChatId = null;
+                if(unsubscribeMessages) unsubscribeMessages();
+                document.getElementById('chat-area').classList.add('translate-x-full');
+            },
+            formatTime: (ts) => {
+                if(!ts) return '';
+                const d = ts.toDate();
+                const now = new Date();
+                if(d.toDateString() === now.toDateString()) return d.toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'});
+                return d.toLocaleDateString('zh-TW', {month:'short', day:'numeric'});
+            },
+            scrollToBottom: () => {
+                const c = document.getElementById('messages-container');
+                c.scrollTop = c.scrollHeight;
+            }
+        };
+
+        // ================= APP LOGIC =================
+        window.app = {
+            login: async () => {
+                document.getElementById('login-loading').classList.remove('hidden');
+                const provider = new GoogleAuthProvider();
+                try {
+                    // 優先嘗試彈窗 (UX較佳)
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    console.warn("Popup failed, trying redirect...", error);
+                    // 失敗則嘗試跳轉 (手機相容性高)
+                    signInWithRedirect(auth, provider);
+                }
+            },
+            showQRModal: () => {
+                document.getElementById('qrcode').innerHTML = "";
+                const url = `${window.location.origin}${window.location.pathname}?action=add&uid=${currentUser.uid}`;
+                new QRCode(document.getElementById("qrcode"), { text: url, width: 200, height: 200, colorDark : "#4f46e5" });
+                document.getElementById('qr-modal').classList.remove('hidden');
+            },
+            showCreateGroupModal: () => {
+                pendingGroupMembers = [];
+                document.getElementById('group-members-list').innerHTML = '';
+                document.getElementById('group-modal').classList.remove('hidden');
+            },
+            handleUrlParams: async () => {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('action') === 'add' && params.get('uid') && currentUser && params.get('uid') !== currentUser.uid) {
+                    const targetUid = params.get('uid');
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    const confirmAdd = confirm("偵測到好友連結！是否立即傳送訊息並加入聯絡人？");
+                    if (confirmAdd) await window.app.startPrivateChat(targetUid);
+                }
+            },
+            // 核心：建立對話 + 自動加聯絡人
+            startPrivateChat: async (targetUid) => {
+                document.getElementById('search-modal').classList.add('hidden');
+                
+                // 1. 自動加入聯絡人
+                await updateDoc(doc(db, "users", currentUser.uid), {
+                    contacts: arrayUnion(targetUid)
                 });
-        });
 
-        // 方式 B: 跳轉 (手機標準做法)
-        document.getElementById('google-login-btn-redirect').addEventListener('click', () => {
-            logToScreen("使用者點擊：Redirect 登入");
-            document.getElementById('login-loading').classList.remove('hidden');
-            // 在跳轉前記錄，確保不是因為點擊沒反應
-            setTimeout(() => {
-                signInWithRedirect(auth, provider)
-                    .then(() => logToScreen("Redirect 指令已發出 (頁面應跳轉)"))
-                    .catch((error) => {
-                        document.getElementById('login-loading').classList.add('hidden');
-                        logToScreen("Redirect 啟動失敗: " + error.message, 'error');
-                        alert("Redirect 失敗: " + error.message);
+                // 2. 檢查或建立 Chat
+                const q = query(collection(db, "chats"), where("type", "==", "private"), where("members", "array-contains", currentUser.uid));
+                const snap = await getDocs(q);
+                let existingId = null;
+                
+                snap.forEach(d => {
+                    if(d.data().members.includes(targetUid)) existingId = d.id;
+                });
+
+                if(existingId) {
+                    chatLogic.loadChat(existingId);
+                } else {
+                    const ref = await addDoc(collection(db, "chats"), {
+                        type: "private",
+                        members: [currentUser.uid, targetUid],
+                        updatedAt: serverTimestamp(),
+                        lastMessage: "👋 新朋友連結建立！"
                     });
-            }, 100);
+                    chatLogic.loadChat(ref.id);
+                }
+                
+                // 若正在聯絡人分頁，刷新
+                if(!document.getElementById('contact-list').classList.contains('hidden')) chatLogic.loadContacts();
+            },
+            openMsgMenu: (msgId) => {
+                selectedMsgId = msgId;
+                document.getElementById('msg-action-modal').classList.remove('hidden');
+            },
+            handleDeleteMsg: async () => {
+                if(selectedMsgId && currentChatId) {
+                    await deleteDoc(doc(db, "chats", currentChatId, "messages", selectedMsgId));
+                    document.getElementById('msg-action-modal').classList.add('hidden');
+                }
+            },
+            handleEditMsg: async () => {
+                const newText = prompt("請輸入新內容：");
+                if(newText && selectedMsgId && currentChatId) {
+                    await updateDoc(doc(db, "chats", currentChatId, "messages", selectedMsgId), {
+                        text: newText, isEdited: true
+                    });
+                    document.getElementById('msg-action-modal').classList.add('hidden');
+                }
+            }
+        };
+
+        // ================= CHAT LOGIC =================
+        const chatLogic = {
+            listenToChats: () => {
+                // 使用 where 篩選，並在前端進行排序，解決索引問題
+                const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid));
+                
+                onSnapshot(q, (snap) => {
+                    const list = document.getElementById('chat-list');
+                    list.innerHTML = "";
+                    if(snap.empty) {
+                        list.innerHTML = `<div class="p-8 text-center text-gray-400 text-sm mt-10"><i class="fa-regular fa-paper-plane text-4xl mb-3 block opacity-30"></i>還沒有對話<br>點擊上方搜尋或建立群組</div>`;
+                        return;
+                    }
+
+                    // 轉換與排序
+                    let chats = [];
+                    snap.forEach(d => chats.push({ id: d.id, ...d.data() }));
+                    chats.sort((a, b) => {
+                        const ta = a.updatedAt ? a.updatedAt.toMillis() : 0;
+                        const tb = b.updatedAt ? b.updatedAt.toMillis() : 0;
+                        return tb - ta; 
+                    });
+
+                    chats.forEach(async (data) => {
+                        let title = "載入中...", avatar = "https://via.placeholder.com/50";
+                        
+                        if(data.type === 'private') {
+                            const otherId = data.members.find(id => id !== currentUser.uid);
+                            // Simple fetch (Cache logic omitted for brevity)
+                            getDoc(doc(db, "users", otherId)).then(uSnap => {
+                                if(uSnap.exists()) {
+                                    const uData = uSnap.data();
+                                    const titleEl = document.getElementById(`title-${data.id}`);
+                                    const imgEl = document.getElementById(`img-${data.id}`);
+                                    if(titleEl) titleEl.innerText = uData.displayName;
+                                    if(imgEl) imgEl.src = uData.photoURL;
+                                }
+                            });
+                        } else {
+                            title = data.groupName;
+                            avatar = `https://ui-avatars.com/api/?name=${title}&background=6366f1&color=fff`;
+                        }
+
+                        const div = document.createElement('div');
+                        div.className = `p-4 border-b border-gray-100 flex items-center gap-3 cursor-pointer hover:bg-brand-50 transition duration-200 ${currentChatId === data.id ? 'bg-brand-50 border-l-4 border-brand-500' : 'border-l-4 border-transparent'}`;
+                        div.innerHTML = `
+                            <img id="img-${data.id}" src="${avatar}" class="w-12 h-12 rounded-full bg-gray-200 object-cover shadow-sm">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-baseline">
+                                    <h4 id="title-${data.id}" class="font-bold text-gray-800 text-sm truncate">${title}</h4>
+                                    <span class="text-[10px] text-gray-400 font-medium">${ui.formatTime(data.updatedAt)}</span>
+                                </div>
+                                <p class="text-xs text-gray-500 truncate mt-1">${data.lastMessage || ''}</p>
+                            </div>
+                        `;
+                        div.onclick = () => chatLogic.loadChat(data.id);
+                        list.appendChild(div);
+                    });
+                });
+            },
+            loadContacts: async () => {
+                const uSnap = await getDoc(doc(db, "users", currentUser.uid));
+                const contactIds = uSnap.data().contacts || [];
+                const list = document.getElementById('contact-list');
+                list.innerHTML = "";
+                
+                if(contactIds.length === 0) {
+                    list.innerHTML = `<div class="p-8 text-center text-gray-400 text-sm mt-10">尚未加入聯絡人</div>`;
+                    return;
+                }
+
+                contactIds.forEach(async (uid) => {
+                    const snap = await getDoc(doc(db, "users", uid));
+                    if(snap.exists()) {
+                        const u = snap.data();
+                        const div = document.createElement('div');
+                        div.className = "p-4 border-b border-gray-100 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition";
+                        div.innerHTML = `
+                             <div class="flex items-center gap-3">
+                                <img src="${u.photoURL}" class="w-10 h-10 rounded-full bg-gray-200 shadow-sm">
+                                <div><div class="font-bold text-sm text-gray-800">${u.displayName}</div><div class="text-xs text-gray-400">${u.email}</div></div>
+                             </div>
+                             <button class="text-brand-600 w-8 h-8 rounded-full hover:bg-brand-100 flex items-center justify-center transition"><i class="fa-regular fa-comment-dots text-lg"></i></button>
+                        `;
+                        div.onclick = () => window.app.startPrivateChat(u.uid);
+                        list.appendChild(div);
+                    }
+                });
+            },
+            loadChat: async (id) => {
+                currentChatId = id;
+                ui.openChat();
+                
+                const cSnap = await getDoc(doc(db, "chats", id));
+                const data = cSnap.data();
+                
+                if(data.type === 'private') {
+                    const otherId = data.members.find(id => id !== currentUser.uid);
+                    const uSnap = await getDoc(doc(db, "users", otherId));
+                    if(uSnap.exists()) {
+                        const u = uSnap.data();
+                        document.getElementById('header-title').innerText = u.displayName;
+                        document.getElementById('header-avatar').src = u.photoURL;
+                        document.getElementById('header-subtitle').innerText = u.email;
+                    }
+                } else {
+                    document.getElementById('header-title').innerText = data.groupName;
+                    document.getElementById('header-avatar').src = `https://ui-avatars.com/api/?name=${data.groupName}&background=6366f1&color=fff`;
+                    document.getElementById('header-subtitle').innerText = `${data.members.length} 成員`;
+                }
+
+                if(unsubscribeMessages) unsubscribeMessages();
+                const q = query(collection(db, "chats", id, "messages"), orderBy("timestamp", "asc"));
+                unsubscribeMessages = onSnapshot(q, (snap) => {
+                    const container = document.getElementById('messages-container');
+                    container.innerHTML = "";
+                    snap.forEach(d => {
+                        const m = d.data();
+                        const isMe = m.senderId === currentUser.uid;
+                        const div = document.createElement('div');
+                        div.className = `flex mb-3 ${isMe ? 'justify-end' : 'justify-start'} animate-[fadeIn_0.2s_ease-out]`;
+                        
+                        // Menu trigger
+                        const menuTrigger = isMe ? `
+                            <button onclick="app.openMsgMenu('${d.id}')" class="msg-menu opacity-0 group-hover:opacity-100 transition px-2 text-gray-400 hover:text-gray-600">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                        ` : '';
+
+                        div.innerHTML = `
+                            ${!isMe ? `<img src="${m.senderAvatar}" class="w-8 h-8 rounded-full mr-2 self-end mb-1 shadow-sm">` : ''}
+                            <div class="flex items-center group max-w-[80%]">
+                                ${isMe ? menuTrigger : ''}
+                                <div class="${isMe ? 'bg-brand-600 text-white rounded-l-2xl rounded-tr-2xl' : 'bg-white border border-gray-200 text-gray-800 rounded-r-2xl rounded-tl-2xl'} px-4 py-2 shadow-sm break-words relative msg-bubble cursor-pointer transform transition origin-bottom hover:scale-[1.01]" onclick="${isMe && window.innerWidth < 768 ? `app.openMsgMenu('${d.id}')` : ''}">
+                                    <div class="text-sm leading-relaxed">${m.text}</div>
+                                    <div class="text-[10px] opacity-70 text-right mt-1 flex justify-end gap-1">
+                                        ${m.isEdited ? '<span>(已編輯)</span>' : ''}
+                                        <span>${ui.formatTime(m.timestamp)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                    ui.scrollToBottom();
+                });
+            }
+        };
+
+        // ================= EVENT LISTENERS =================
+        document.getElementById('google-login-btn').addEventListener('click', app.login);
+
+        document.getElementById('search-btn').addEventListener('click', async () => {
+            const val = document.getElementById('search-input').value.trim();
+            if(!val) return;
+            
+            const resDiv = document.getElementById('search-results');
+            resDiv.innerHTML = `<div class="flex justify-center p-4"><div class="spinner"></div></div>`;
+            document.getElementById('search-modal').classList.remove('hidden');
+            
+            let q = query(collection(db, "users"), where("email", "==", val));
+            let snap = await getDocs(q);
+            if(snap.empty) {
+                q = query(collection(db, "users"), where("studentId", "==", val));
+                snap = await getDocs(q);
+            }
+            
+            resDiv.innerHTML = "";
+            if(snap.empty) {
+                resDiv.innerHTML = `<div class="text-center text-gray-500 py-4"><i class="fa-regular fa-face-frown text-2xl mb-2 block"></i>找不到使用者<br><span class="text-xs">請確認對方已登入過系統</span></div>`;
+                return;
+            }
+            
+            snap.forEach(d => {
+                const u = d.data();
+                if(u.uid === currentUser.uid) return;
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition cursor-pointer";
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${u.photoURL}" class="w-10 h-10 rounded-full bg-gray-200 shadow-sm">
+                        <div>
+                            <div class="text-sm font-bold text-gray-800">${u.displayName}</div>
+                            <div class="text-xs text-gray-500">${u.email}</div>
+                        </div>
+                    </div>
+                    <button class="text-brand-600 hover:bg-brand-50 p-2 rounded-full transition"><i class="fa-regular fa-paper-plane text-lg"></i></button>
+                `;
+                div.onclick = () => window.app.startPrivateChat(u.uid);
+                resDiv.appendChild(div);
+            });
         });
 
-        // 監聽狀態
+        document.getElementById('add-member-btn').addEventListener('click', async () => {
+            const email = document.getElementById('group-member-search').value.trim();
+            const q = query(collection(db, "users"), where("email", "==", email));
+            const snap = await getDocs(q);
+            if(!snap.empty) {
+                const u = snap.docs[0].data();
+                if(pendingGroupMembers.find(m => m.uid === u.uid)) return;
+                pendingGroupMembers.push(u);
+                const div = document.createElement('div');
+                div.className = "bg-brand-50 text-brand-700 px-3 py-1 rounded-full text-xs mr-2 mb-1 inline-flex items-center gap-1 border border-brand-100";
+                div.innerHTML = `<span>${u.displayName}</span>`;
+                document.getElementById('group-members-list').appendChild(div);
+                document.getElementById('group-member-search').value = "";
+            } else { alert("找不到使用者"); }
+        });
+
+        document.getElementById('create-group-btn').addEventListener('click', async () => {
+            const name = document.getElementById('group-name').value;
+            if(!name || pendingGroupMembers.length === 0) return alert("請輸入名稱並加入成員");
+            const uids = pendingGroupMembers.map(u => u.uid);
+            uids.push(currentUser.uid);
+            const ref = await addDoc(collection(db, "chats"), {
+                type: "group", groupName: name, members: uids, updatedAt: serverTimestamp(), lastMessage: "群組已建立"
+            });
+            document.getElementById('group-modal').classList.add('hidden');
+            chatLogic.loadChat(ref.id);
+        });
+
+        document.getElementById('message-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if(!text || !currentChatId) return;
+            input.value = "";
+            
+            await addDoc(collection(db, "chats", currentChatId, "messages"), {
+                text, senderId: currentUser.uid, senderAvatar: currentUser.photoURL, timestamp: serverTimestamp(), type: 'text'
+            });
+            await updateDoc(doc(db, "chats", currentChatId), {
+                lastMessage: text, updatedAt: serverTimestamp()
+            });
+        });
+
         onAuthStateChanged(auth, async (u) => {
             if (u) {
-                logToScreen("偵測到使用者已登入: " + u.email);
+                currentUser = u;
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-screen').classList.remove('hidden');
                 
                 document.getElementById('my-avatar').style.backgroundImage = `url(${u.photoURL})`;
                 document.getElementById('my-name').innerText = u.displayName;
-
-                // 簡單寫入資料庫測試權限
-                try {
-                    const userRef = doc(db, "users", u.uid);
-                    const uSnap = await getDoc(userRef);
-                    if(!uSnap.exists()) {
-                         await setDoc(userRef, {
-                            uid: u.uid, email: u.email, displayName: u.displayName, photoURL: u.photoURL,
-                            studentId: Math.floor(100000 + Math.random() * 900000).toString(),
-                            createdAt: serverTimestamp(), contacts: []
-                        });
-                        logToScreen("新使用者資料建立成功");
-                    }
-                } catch(dbErr) {
-                    logToScreen("資料庫寫入失敗 (可能是權限問題): " + dbErr.message, 'error');
+                
+                const userRef = doc(db, "users", u.uid);
+                const uSnap = await getDoc(userRef);
+                if(!uSnap.exists()) {
+                    await setDoc(userRef, {
+                        uid: u.uid, email: u.email, displayName: u.displayName, photoURL: u.photoURL,
+                        studentId: Math.floor(100000 + Math.random() * 900000).toString(),
+                        createdAt: serverTimestamp(), contacts: []
+                    });
+                    document.getElementById('my-id').innerText = "New User";
+                } else {
+                    document.getElementById('my-id').innerText = "ID: " + uSnap.data().studentId;
                 }
-
+                
+                chatLogic.listenToChats();
+                window.app.handleUrlParams();
             } else {
-                logToScreen("目前為未登入狀態");
+                currentUser = null;
                 document.getElementById('login-screen').classList.remove('hidden');
                 document.getElementById('app-screen').classList.add('hidden');
                 document.getElementById('login-loading').classList.add('hidden');
@@ -203,6 +635,7 @@
         });
 
         window.auth = auth;
+        window.chatLogic = chatLogic;
     </script>
 </body>
 </html>

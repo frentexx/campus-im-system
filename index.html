@@ -33,8 +33,6 @@
         .msg-bubble:hover .msg-menu { display: flex; }
         /* Mobile handling */
         @media (max-width: 768px) {
-            .mobile-hidden { display: none !important; }
-            .mobile-visible { display: flex !important; }
             .msg-menu { display: flex; opacity: 0.5; } /* Always show distinct menu trigger on mobile */
         }
     </style>
@@ -50,10 +48,14 @@
                 </div>
             </div>
             <h1 class="text-3xl font-bold text-gray-900 mb-2">CampusConnect</h1>
-            <button id="google-login-btn" class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-sm mt-6">
+            <p class="text-gray-500 mb-6">連接校園，即時溝通</p>
+            <button id="google-login-btn" class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-sm">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6">
                 使用 Google 帳號登入
             </button>
+            <div id="login-loading" class="hidden mt-4 text-brand-600 font-bold">
+                <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> 正在登入中...
+            </div>
         </div>
     </div>
 
@@ -64,7 +66,7 @@
         <div id="sidebar" class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col h-full z-10">
             <!-- Header -->
             <div class="p-4 bg-brand-600 text-white flex justify-between items-center shadow-md shrink-0">
-                <div class="flex items-center gap-3 cursor-pointer" onclick="app.showProfileModal()">
+                <div class="flex items-center gap-3 cursor-pointer">
                     <div id="my-avatar" class="w-10 h-10 rounded-full bg-gray-300 bg-cover"></div>
                     <div class="overflow-hidden">
                         <div id="my-name" class="font-bold text-sm truncate w-32">載入中...</div>
@@ -126,14 +128,6 @@
                     <h3 id="header-title" class="font-bold text-gray-800 truncate text-base"></h3>
                     <div id="header-subtitle" class="text-xs text-gray-500 truncate"></div>
                 </div>
-                <!-- Chat Actions -->
-                <div class="relative group">
-                     <button id="chat-options-btn" class="text-gray-400 hover:text-brand-600 px-3"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                     <!-- Dropdown for adding to contacts -->
-                     <div id="chat-options-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border z-50">
-                         <a href="#" onclick="app.addToContactsFromChat()" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">加入聯絡人</a>
-                     </div>
-                </div>
             </div>
 
             <!-- Messages -->
@@ -145,7 +139,7 @@
             <div class="bg-white p-3 border-t border-gray-200 shrink-0">
                 <form id="message-form" class="flex items-end gap-2">
                     <div class="flex-1 bg-gray-100 rounded-2xl px-4 py-2">
-                        <textarea id="message-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 text-sm resize-none max-h-24 outline-none" placeholder="輸入訊息..."></textarea>
+                        <input type="text" id="message-input" class="w-full bg-transparent border-none focus:ring-0 text-sm outline-none" placeholder="輸入訊息..." autocomplete="off">
                     </div>
                     <button type="submit" class="bg-brand-600 text-white rounded-full w-10 h-10 flex items-center justify-center shrink-0 shadow-sm hover:bg-brand-700">
                         <i class="fa-solid fa-paper-plane text-sm"></i>
@@ -173,7 +167,7 @@
             <h3 class="text-xl font-bold mb-1">我的 QR Code</h3>
             <p class="text-gray-500 text-sm mb-6">讓朋友掃描以加入對話</p>
             <div id="qrcode" class="mb-6 p-2 border-2 border-dashed border-brand-200 rounded-lg"></div>
-            <p class="text-xs text-gray-400 text-center">掃描後將自動開啟此網頁並建立連結</p>
+            <p class="text-xs text-gray-400 text-center">掃描後將自動開啟網頁並連結</p>
         </div>
     </div>
 
@@ -209,10 +203,11 @@
     <!-- ================= LOGIC ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getFirestore, collection, query, where, getDocs, setDoc, addDoc, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, orderBy, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // 1. 設定：請填入您的 Firebase Config
+        // ================= CONFIGURATION =================
+        // TODO: 請務必重新填入您的 Config
         const firebaseConfig = {
             apiKey: "AIzaSyCRW_kRczHRAnllzoAjF1GSSX_5wCtV_P4",
 			authDomain: "campus-im-system.firebaseapp.com",
@@ -228,31 +223,47 @@
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
+            
+            // 處理手機登入跳轉後的結果
+            getRedirectResult(auth).then((result) => {
+                if (result) {
+                    // 登入成功，onAuthStateChanged 會處理後續
+                }
+            }).catch((error) => {
+                console.error(error);
+                alert("登入錯誤：" + error.message);
+                document.getElementById('login-loading').classList.add('hidden');
+            });
+
         } catch (e) {
             console.error(e);
             alert("Firebase 初始化失敗，請填入 Config");
         }
 
-        // 2. 狀態管理
+        // ================= LOGIC =================
+
         let currentUser = null;
         let currentChatId = null;
-        let selectedMsgId = null; // for edit/delete
+        let selectedMsgId = null;
         let unsubscribeMessages = null;
         let pendingGroupMembers = [];
 
-        // 3. UI 控制
+        // UI Helpers
         window.ui = {
             switchTab: (tab) => {
-                document.getElementById('tab-chats').className = tab === 'chats' ? 'flex-1 py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600' : 'flex-1 py-3 text-sm font-bold text-gray-500 hover:bg-gray-50';
-                document.getElementById('tab-contacts').className = tab === 'contacts' ? 'flex-1 py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600' : 'flex-1 py-3 text-sm font-bold text-gray-500 hover:bg-gray-50';
+                const btnChat = document.getElementById('tab-chats');
+                const btnContact = document.getElementById('tab-contacts');
+                const activeClass = 'flex-1 py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600';
+                const inactiveClass = 'flex-1 py-3 text-sm font-bold text-gray-500 hover:bg-gray-50';
+                
+                btnChat.className = tab === 'chats' ? activeClass : inactiveClass;
+                btnContact.className = tab === 'contacts' ? activeClass : inactiveClass;
+                
                 document.getElementById('chat-list').classList.toggle('hidden', tab !== 'chats');
                 document.getElementById('contact-list').classList.toggle('hidden', tab !== 'contacts');
                 if(tab === 'contacts') chatLogic.loadContacts();
             },
-            openChat: () => {
-                // Mobile slide in
-                document.getElementById('chat-area').classList.remove('translate-x-full');
-            },
+            openChat: () => document.getElementById('chat-area').classList.remove('translate-x-full'),
             closeChat: () => {
                 currentChatId = null;
                 if(unsubscribeMessages) unsubscribeMessages();
@@ -271,17 +282,17 @@
             }
         };
 
-        // 4. 應用程式邏輯
+        // App Logic
         window.app = {
+            login: () => {
+                document.getElementById('login-loading').classList.remove('hidden');
+                // 使用 Redirect 以支援手機
+                signInWithRedirect(auth, new GoogleAuthProvider());
+            },
             showQRModal: () => {
                 document.getElementById('qrcode').innerHTML = "";
-                // 產生一個網址，包含 action=add 和 uid
                 const url = `${window.location.origin}${window.location.pathname}?action=add&uid=${currentUser.uid}`;
-                new QRCode(document.getElementById("qrcode"), {
-                    text: url,
-                    width: 200,
-                    height: 200
-                });
+                new QRCode(document.getElementById("qrcode"), { text: url, width: 200, height: 200 });
                 document.getElementById('qr-modal').classList.remove('hidden');
             },
             showCreateGroupModal: () => {
@@ -289,26 +300,24 @@
                 document.getElementById('group-members-list').innerHTML = '';
                 document.getElementById('group-modal').classList.remove('hidden');
             },
-            // 處理掃描後的 URL 參數
             handleUrlParams: async () => {
                 const params = new URLSearchParams(window.location.search);
-                const action = params.get('action');
-                const targetUid = params.get('uid');
-
-                if (action === 'add' && targetUid && currentUser && targetUid !== currentUser.uid) {
-                    // 清除 URL 參數以免重整後重複觸發
+                if (params.get('action') === 'add' && params.get('uid') && currentUser && params.get('uid') !== currentUser.uid) {
                     window.history.replaceState({}, document.title, window.location.pathname);
-                    
-                    const confirmAdd = confirm("偵測到好友連結！是否立即傳送訊息？");
-                    if (confirmAdd) {
-                        await window.app.startPrivateChat(targetUid);
-                    }
+                    const confirmAdd = confirm("偵測到好友連結！是否立即傳送訊息並加入聯絡人？");
+                    if (confirmAdd) await window.app.startPrivateChat(params.get('uid'));
                 }
             },
+            // 核心功能：建立對話 + 自動加聯絡人
             startPrivateChat: async (targetUid) => {
                 document.getElementById('search-modal').classList.add('hidden');
                 
-                // 檢查是否已有 Chat
+                // 1. 自動加入聯絡人 (雙向或單向視需求，這裡先做單向:加入自己的清單)
+                await updateDoc(doc(db, "users", currentUser.uid), {
+                    contacts: arrayUnion(targetUid)
+                });
+
+                // 2. 檢查或建立 Chat
                 const q = query(collection(db, "chats"), where("type", "==", "private"), where("members", "array-contains", currentUser.uid));
                 const snap = await getDocs(q);
                 let existingId = null;
@@ -324,25 +333,13 @@
                         type: "private",
                         members: [currentUser.uid, targetUid],
                         updatedAt: serverTimestamp(),
-                        lastMessage: "👋 我們已經連結了！"
+                        lastMessage: "👋 新朋友連結建立！"
                     });
                     chatLogic.loadChat(ref.id);
                 }
-            },
-            addToContactsFromChat: async () => {
-                if(!currentChatId) return;
-                const chatRef = doc(db, "chats", currentChatId);
-                const chatSnap = await getDoc(chatRef);
-                const data = chatSnap.data();
                 
-                if(data.type === 'private') {
-                    const otherId = data.members.find(id => id !== currentUser.uid);
-                    await updateDoc(doc(db, "users", currentUser.uid), {
-                        contacts: arrayUnion(otherId)
-                    });
-                    alert("已加入聯絡人！");
-                    document.getElementById('chat-options-menu').classList.add('hidden');
-                }
+                // 若正在聯絡人分頁，刷新一下
+                if(!document.getElementById('contact-list').classList.contains('hidden')) chatLogic.loadContacts();
             },
             openMsgMenu: (msgId) => {
                 selectedMsgId = msgId;
@@ -351,7 +348,6 @@
             handleDeleteMsg: async () => {
                 if(selectedMsgId && currentChatId) {
                     await deleteDoc(doc(db, "chats", currentChatId, "messages", selectedMsgId));
-                    // 簡單更新 Last Message 會比較複雜，這裡先忽略
                     document.getElementById('msg-action-modal').classList.add('hidden');
                 }
             },
@@ -359,58 +355,70 @@
                 const newText = prompt("請輸入新內容：");
                 if(newText && selectedMsgId && currentChatId) {
                     await updateDoc(doc(db, "chats", currentChatId, "messages", selectedMsgId), {
-                        text: newText,
-                        isEdited: true
+                        text: newText, isEdited: true
                     });
                     document.getElementById('msg-action-modal').classList.add('hidden');
                 }
             }
         };
 
-        document.getElementById('chat-options-btn').addEventListener('click', () => {
-            document.getElementById('chat-options-menu').classList.toggle('hidden');
-        });
-
-        // 5. Chat 邏輯
+        // Chat Logic
         const chatLogic = {
             listenToChats: () => {
-                const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid), orderBy("updatedAt", "desc"));
+                // FIX: 移除了 orderBy("updatedAt") 以避免需要手動建立索引導致列表空白
+                // 改用 Javascript 進行排序
+                const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid));
+                
                 onSnapshot(q, (snap) => {
                     const list = document.getElementById('chat-list');
                     list.innerHTML = "";
                     if(snap.empty) {
-                        list.innerHTML = `<div class="p-8 text-center text-gray-400 text-sm">還沒有對話<br>點擊下方 + 或搜尋 Email</div>`;
+                        list.innerHTML = `<div class="p-8 text-center text-gray-400 text-sm">還沒有對話<br>點擊上方搜尋或建立群組</div>`;
+                        return;
                     }
-                    snap.forEach(async (d) => {
-                        const data = d.data();
-                        let title = "Chat", avatar = "";
+
+                    // 轉換為陣列並排序 (Client-side sorting)
+                    let chats = [];
+                    snap.forEach(d => chats.push({ id: d.id, ...d.data() }));
+                    
+                    // 根據 updatedAt 排序 (新的在前)
+                    chats.sort((a, b) => {
+                        const ta = a.updatedAt ? a.updatedAt.toMillis() : 0;
+                        const tb = b.updatedAt ? b.updatedAt.toMillis() : 0;
+                        return tb - ta; 
+                    });
+
+                    chats.forEach(async (data) => {
+                        let title = "載入中...", avatar = "https://via.placeholder.com/50";
                         
                         if(data.type === 'private') {
                             const otherId = data.members.find(id => id !== currentUser.uid);
-                            // 這裡為了效能，真實 App 應快取 User Data
-                            const uSnap = await getDoc(doc(db, "users", otherId));
-                            if(uSnap.exists()) {
-                                title = uSnap.data().displayName;
-                                avatar = uSnap.data().photoURL;
-                            }
+                            // Simple fetch (In prod, use cache)
+                            getDoc(doc(db, "users", otherId)).then(uSnap => {
+                                if(uSnap.exists()) {
+                                    const uData = uSnap.data();
+                                    document.getElementById(`title-${data.id}`).innerText = uData.displayName;
+                                    document.getElementById(`img-${data.id}`).src = uData.photoURL;
+                                }
+                            });
                         } else {
                             title = data.groupName;
                             avatar = `https://ui-avatars.com/api/?name=${title}&background=6366f1&color=fff`;
                         }
-                        
+
                         const div = document.createElement('div');
-                        div.className = `p-4 border-b border-gray-100 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition ${currentChatId === d.id ? 'bg-brand-50' : ''}`;
+                        div.className = `p-4 border-b border-gray-100 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition ${currentChatId === data.id ? 'bg-brand-50' : ''}`;
                         div.innerHTML = `
-                            <img src="${avatar}" class="w-12 h-12 rounded-full bg-gray-200 object-cover">
+                            <img id="img-${data.id}" src="${avatar}" class="w-12 h-12 rounded-full bg-gray-200 object-cover">
                             <div class="flex-1 min-w-0">
                                 <div class="flex justify-between">
-                                    <h4 class="font-bold text-gray-800 text-sm truncate">${title}</h4>
+                                    <h4 id="title-${data.id}" class="font-bold text-gray-800 text-sm truncate">${title}</h4>
                                     <span class="text-xs text-gray-400">${ui.formatTime(data.updatedAt)}</span>
                                 </div>
                                 <p class="text-xs text-gray-500 truncate">${data.lastMessage || ''}</p>
                             </div>
                         `;
-                        div.onclick = () => chatLogic.loadChat(d.id);
+                        div.onclick = () => chatLogic.loadChat(data.id);
                         list.appendChild(div);
                     });
                 });
@@ -431,7 +439,7 @@
                     if(snap.exists()) {
                         const u = snap.data();
                         const div = document.createElement('div');
-                        div.className = "p-4 border-b border-gray-100 flex items-center justify-between";
+                        div.className = "p-4 border-b border-gray-100 flex items-center justify-between hover:bg-gray-50 cursor-pointer";
                         div.innerHTML = `
                              <div class="flex items-center gap-3">
                                 <img src="${u.photoURL}" class="w-10 h-10 rounded-full bg-gray-200">
@@ -439,7 +447,7 @@
                              </div>
                              <button class="text-brand-600"><i class="fa-regular fa-comment-dots text-xl"></i></button>
                         `;
-                        div.querySelector('button').onclick = () => window.app.startPrivateChat(u.uid);
+                        div.onclick = () => window.app.startPrivateChat(u.uid);
                         list.appendChild(div);
                     }
                 });
@@ -448,28 +456,24 @@
                 currentChatId = id;
                 ui.openChat();
                 
-                // Header info
                 const cSnap = await getDoc(doc(db, "chats", id));
                 const data = cSnap.data();
-                const hTitle = document.getElementById('header-title');
-                const hSub = document.getElementById('header-subtitle');
-                const hImg = document.getElementById('header-avatar');
                 
                 if(data.type === 'private') {
                     const otherId = data.members.find(id => id !== currentUser.uid);
                     const uSnap = await getDoc(doc(db, "users", otherId));
                     if(uSnap.exists()) {
-                        hTitle.innerText = uSnap.data().displayName;
-                        hSub.innerText = uSnap.data().email;
-                        hImg.src = uSnap.data().photoURL;
+                        const u = uSnap.data();
+                        document.getElementById('header-title').innerText = u.displayName;
+                        document.getElementById('header-avatar').src = u.photoURL;
+                        document.getElementById('header-subtitle').innerText = u.email;
                     }
                 } else {
-                    hTitle.innerText = data.groupName;
-                    hSub.innerText = `${data.members.length} 成員`;
-                    hImg.src = `https://ui-avatars.com/api/?name=${data.groupName}&background=6366f1&color=fff`;
+                    document.getElementById('header-title').innerText = data.groupName;
+                    document.getElementById('header-avatar').src = `https://ui-avatars.com/api/?name=${data.groupName}&background=6366f1&color=fff`;
+                    document.getElementById('header-subtitle').innerText = `${data.members.length} 成員`;
                 }
 
-                // Messages
                 if(unsubscribeMessages) unsubscribeMessages();
                 const q = query(collection(db, "chats", id, "messages"), orderBy("timestamp", "asc"));
                 unsubscribeMessages = onSnapshot(q, (snap) => {
@@ -491,7 +495,7 @@
                             ${!isMe ? `<img src="${m.senderAvatar}" class="w-8 h-8 rounded-full mr-2 self-end mb-1">` : ''}
                             <div class="flex items-center group max-w-[80%]">
                                 ${isMe ? menuHtml : ''}
-                                <div class="${isMe ? 'bg-brand-600 text-white rounded-l-2xl rounded-tr-2xl' : 'bg-white border border-gray-200 rounded-r-2xl rounded-tl-2xl'} px-4 py-2 shadow-sm break-words relative">
+                                <div class="${isMe ? 'bg-brand-600 text-white rounded-l-2xl rounded-tr-2xl' : 'bg-white border border-gray-200 rounded-r-2xl rounded-tl-2xl'} px-4 py-2 shadow-sm break-words relative msg-bubble cursor-pointer" onclick="${isMe && window.innerWidth < 768 ? `app.openMsgMenu('${d.id}')` : ''}">
                                     <div class="text-sm">${m.text}</div>
                                     ${m.isEdited ? '<div class="text-[10px] opacity-70 text-right mt-1">(已編輯)</div>' : ''}
                                 </div>
@@ -504,7 +508,9 @@
             }
         };
 
-        // 6. 搜尋與群組邏輯
+        // Handlers
+        document.getElementById('google-login-btn').addEventListener('click', app.login);
+
         document.getElementById('search-btn').addEventListener('click', async () => {
             const val = document.getElementById('search-input').value.trim();
             if(!val) return;
@@ -513,18 +519,16 @@
             resDiv.innerHTML = "搜尋中...";
             document.getElementById('search-modal').classList.remove('hidden');
             
-            // Search Email first
             let q = query(collection(db, "users"), where("email", "==", val));
             let snap = await getDocs(q);
             if(snap.empty) {
-                // Try Student ID
                 q = query(collection(db, "users"), where("studentId", "==", val));
                 snap = await getDocs(q);
             }
             
             resDiv.innerHTML = "";
             if(snap.empty) {
-                resDiv.innerHTML = "找不到使用者";
+                resDiv.innerHTML = "找不到使用者 (請確認對方已登入過系統)";
                 return;
             }
             
@@ -545,7 +549,6 @@
             });
         });
 
-        // Add Member to Group List
         document.getElementById('add-member-btn').addEventListener('click', async () => {
             const email = document.getElementById('group-member-search').value.trim();
             const q = query(collection(db, "users"), where("email", "==", email));
@@ -561,7 +564,6 @@
             } else { alert("找不到"); }
         });
 
-        // Create Group
         document.getElementById('create-group-btn').addEventListener('click', async () => {
             const name = document.getElementById('group-name').value;
             if(!name || pendingGroupMembers.length === 0) return alert("請輸入名稱並加入成員");
@@ -574,7 +576,6 @@
             chatLogic.loadChat(ref.id);
         });
 
-        // Send Message
         document.getElementById('message-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const input = document.getElementById('message-input');
@@ -589,27 +590,16 @@
                 lastMessage: text, updatedAt: serverTimestamp()
             });
         });
-        
-        // Enter to send
-        document.getElementById('message-input').addEventListener('keypress', (e) => {
-            if(e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('message-form').dispatchEvent(new Event('submit'));
-            }
-        });
 
-        // 7. Auth Observer
         onAuthStateChanged(auth, async (u) => {
             if (u) {
                 currentUser = u;
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-screen').classList.remove('hidden');
                 
-                // Update Sidebar Profile
                 document.getElementById('my-avatar').style.backgroundImage = `url(${u.photoURL})`;
                 document.getElementById('my-name').innerText = u.displayName;
                 
-                // Ensure User Doc exists
                 const userRef = doc(db, "users", u.uid);
                 const uSnap = await getDoc(userRef);
                 if(!uSnap.exists()) {
@@ -618,20 +608,21 @@
                         studentId: Math.floor(100000 + Math.random() * 900000).toString(),
                         createdAt: serverTimestamp(), contacts: []
                     });
+                    document.getElementById('my-id').innerText = "New User";
                 } else {
                     document.getElementById('my-id').innerText = "ID: " + uSnap.data().studentId;
                 }
                 
                 chatLogic.listenToChats();
-                window.app.handleUrlParams(); // Check for QR link
+                window.app.handleUrlParams();
             } else {
                 currentUser = null;
                 document.getElementById('login-screen').classList.remove('hidden');
                 document.getElementById('app-screen').classList.add('hidden');
+                document.getElementById('login-loading').classList.add('hidden'); // Reset loading state
             }
         });
 
-        // Expose globals
         window.auth = auth;
         window.chatLogic = chatLogic;
     </script>

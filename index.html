@@ -3,174 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CampusConnect | v4.0 Ultimate</title>
+    <title>CampusConnect v4.1</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: { 50: '#f8fafc', 100: '#f1f5f9', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
-                    }
-                }
-            }
+            theme: { extend: { colors: { brand: { 50: '#f8fafc', 100: '#f1f5f9', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' } } } }
         }
     </script>
 
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100vh; width: 100vw; margin: 0; padding: 0; overflow: hidden; font-family: 'Inter', sans-serif; }
+        /* CSS Grid 佈局：強行鎖定位置 */
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: #f1f5f9; font-family: sans-serif; }
         
-        /* 佈局架構 */
-        .app-container { height: 100%; display: flex; flex-direction: column; background-color: #f1f5f9; }
-        .main-layout { flex: 1; display: flex; overflow: hidden; }
+        .app-shell { display: grid; grid-template-columns: 350px 1fr; height: 100vh; width: 100vw; }
+        
+        .chat-container { display: grid; grid-template-rows: 80px 1fr 100px; height: 100%; background: white; }
 
-        /* 側邊欄與聊天區 */
-        .sidebar { width: 350px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); display: flex; flex-direction: column; border-right: 1px solid #e2e8f0; }
-        .chat-main { flex: 1; display: flex; flex-direction: column; background: white; position: relative; }
-
-        /* 訊息泡泡 */
-        .msg-bubble-me { border-radius: 20px 20px 4px 20px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15); }
-        .msg-bubble-other { border-radius: 20px 20px 20px 4px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
-
-        /* 行動端切換 */
         @media (max-width: 767px) {
-            .sidebar { width: 100%; }
-            .chat-main { position: fixed; inset: 0; z-index: 50; transform: translateX(100%); transition: transform 0.3s ease; }
-            .chat-main.active { transform: translateX(0); }
+            .app-shell { grid-template-columns: 1fr; }
+            .chat-container { position: fixed; inset: 0; z-index: 50; transform: translateX(100%); transition: 0.3s; }
+            .chat-container.active { transform: translateX(0); }
         }
 
+        .msg-bubble-me { border-radius: 20px 20px 4px 20px; background: #4f46e5; color: white; }
+        .msg-bubble-other { border-radius: 20px 20px 20px 4px; background: #f1f5f9; color: #1e293b; }
+        
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .fade-in { animation: fadeIn 0.2s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="app-container">
+<body>
 
-    <!-- 登入頁面 -->
+    <!-- 登入頁 -->
     <div id="login-screen" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8">
-        <div class="w-full max-w-sm text-center">
-            <div class="w-20 h-20 bg-brand-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                <i class="fa-solid fa-bolt-lightning text-white text-3xl"></i>
-            </div>
-            <h1 class="text-4xl font-extrabold text-slate-900 mb-2">CampusConnect</h1>
-            <p class="text-slate-400 mb-12 font-medium uppercase tracking-widest text-[10px]">Premium Communication</p>
-            <button id="login-btn" class="w-full flex items-center justify-center gap-4 bg-slate-900 text-white font-bold py-4 px-6 rounded-2xl shadow-xl active:scale-95 transition-all">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6">
-                使用 Google 帳號登入
+        <div class="text-center">
+            <div class="w-20 h-20 bg-brand-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-xl text-white text-3xl"><i class="fa-solid fa-bolt"></i></div>
+            <h1 class="text-4xl font-black mb-10">CampusConnect</h1>
+            <button onclick="window.doLogin()" class="flex items-center gap-4 bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6">使用 Google 登入
             </button>
         </div>
     </div>
 
-    <!-- 主程式區域 -->
-    <div id="app-screen" class="hidden main-layout md:p-4 lg:p-6 gap-0 md:gap-6">
+    <!-- 主頁面 -->
+    <div id="app-screen" class="hidden app-shell md:p-4 lg:p-6 md:gap-6">
         
-        <!-- Sidebar -->
-        <div class="sidebar md:rounded-[2.5rem] shadow-xl overflow-hidden shrink-0">
-            <!-- Header -->
-            <div class="p-6 pb-4 flex items-center justify-between">
+        <!-- 側邊欄 -->
+        <div class="bg-white/80 backdrop-blur md:rounded-[2.5rem] flex flex-col border border-white shadow-xl overflow-hidden">
+            <div class="p-6 flex items-center justify-between border-b border-slate-50">
                 <div class="flex items-center gap-3">
-                    <div id="my-avatar" class="w-11 h-11 rounded-2xl bg-slate-200 bg-cover border border-white shadow-sm"></div>
-                    <div>
-                        <div id="my-name" class="font-bold text-slate-800 text-sm">...</div>
-                        <div id="my-id" class="text-[10px] font-black text-brand-600 tracking-tighter">ID: ...</div>
-                    </div>
+                    <div id="my-avatar" class="w-11 h-11 rounded-2xl bg-slate-200 bg-cover"></div>
+                    <div class="font-bold text-sm" id="my-name">...</div>
                 </div>
-                <div class="flex gap-1">
-                    <button id="btn-qr" class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all"><i class="fa-solid fa-qrcode"></i></button>
-                    <button id="btn-logout" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 border border-red-100 transition-all"><i class="fa-solid fa-power-off"></i></button>
+                <div class="flex gap-2">
+                    <button onclick="window.showQR()" class="text-slate-400 p-2"><i class="fa-solid fa-qrcode"></i></button>
+                    <button onclick="window.doLogout()" class="text-red-400 p-2"><i class="fa-solid fa-power-off"></i></button>
                 </div>
             </div>
 
-            <!-- Tabs -->
-            <div class="flex px-6 mb-2 gap-6 border-b border-slate-100/50">
-                <button id="tab-btn-chats" class="tab-btn relative py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600 transition-all">聊天頻道</button>
-                <button id="tab-btn-contacts" class="tab-btn relative py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent transition-all">聯絡人</button>
+            <div class="flex border-b border-slate-50">
+                <button id="t-chats" onclick="window.switchTab('chats')" class="flex-1 py-4 text-sm font-bold text-brand-600 border-b-2 border-brand-600">聊天</button>
+                <button id="t-contacts" onclick="window.switchTab('contacts')" class="flex-1 py-4 text-sm font-bold text-slate-400 border-b-2 border-transparent">聯絡人</button>
             </div>
 
-            <!-- Search -->
-            <div class="p-4">
+            <div class="p-4 border-b border-slate-50">
                 <div class="relative">
-                    <input type="text" id="search-input" placeholder="搜尋 Email 或學號..." class="w-full pl-4 pr-12 py-3 bg-slate-100 border-none rounded-2xl text-sm focus:ring-2 focus:ring-brand-500/20 outline-none">
-                    <button id="search-btn-go" class="absolute right-2 top-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[10px] font-black">GO</button>
+                    <input id="search-input" type="text" placeholder="搜尋..." class="w-full bg-slate-100 border-none rounded-2xl py-3 pl-4 pr-12 text-sm outline-none">
+                    <button onclick="window.doSearch()" class="absolute right-2 top-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold">GO</button>
                 </div>
             </div>
 
-            <!-- List Area -->
-            <div class="flex-1 overflow-y-auto no-scrollbar pb-10">
-                <div id="chat-list-container" class="space-y-1 px-4"></div>
-                <div id="contact-list-container" class="space-y-1 px-4 hidden"></div>
+            <div id="list-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
+                <!-- 列表內容 -->
             </div>
         </div>
 
-        <!-- Chat Main Area -->
-        <div id="chat-view-container" class="chat-main md:rounded-[2.5rem] shadow-2xl overflow-hidden border border-white">
+        <!-- 聊天室 (Grid 佈局) -->
+        <div id="chat-panel" class="chat-container md:rounded-[2.5rem] border border-white shadow-2xl overflow-hidden">
             
-            <!-- Chat Header -->
-            <div class="h-20 px-6 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-                <div class="flex items-center gap-4 min-w-0">
-                    <button id="btn-back" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500"><i class="fa-solid fa-chevron-left"></i></button>
-                    <div id="header-avatar" class="w-11 h-11 rounded-2xl bg-slate-100 bg-cover border border-slate-200"></div>
-                    <div class="overflow-hidden">
-                        <h4 id="header-title" class="font-bold text-slate-800 leading-tight truncate">選擇頻道</h4>
-                        <p id="header-subtitle" class="text-[10px] font-bold text-slate-400 tracking-widest uppercase truncate">CampusConnect Messenger</p>
+            <!-- Header -->
+            <div class="px-6 flex items-center justify-between border-b border-slate-100 bg-white/50">
+                <div class="flex items-center gap-4">
+                    <button onclick="window.closeChat()" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div id="h-avatar" class="w-11 h-11 rounded-2xl bg-slate-100 bg-cover"></div>
+                    <div>
+                        <div id="h-name" class="font-bold text-slate-800">選擇頻道</div>
+                        <div id="h-sub" class="text-[10px] font-bold text-slate-400 uppercase">Messenger</div>
                     </div>
                 </div>
-                <div class="flex gap-1">
-                    <button id="btn-block" class="w-9 h-9 text-slate-300 hover:text-red-500 transition-all"><i class="fa-solid fa-ban text-sm"></i></button>
-                    <button id="btn-delete-chat" class="w-9 h-9 text-slate-300 hover:text-red-500 transition-all"><i class="fa-solid fa-trash-can text-sm"></i></button>
+                <div class="flex gap-2">
+                    <button onclick="window.doBlock()" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-ban"></i></button>
+                    <button onclick="window.doDeleteChat()" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
             </div>
 
-            <!-- Messages List -->
-            <div id="messages-list" class="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar bg-white">
-                <div id="hint-empty" class="h-full flex flex-col items-center justify-center text-slate-200">
-                    <i class="fa-solid fa-message-dots text-6xl mb-4 opacity-10"></i>
-                    <p class="font-black text-[10px] uppercase tracking-[0.2em]">Select a conversation</p>
+            <!-- Messages Area -->
+            <div id="msg-box" class="overflow-y-auto p-6 space-y-6 no-scrollbar">
+                <div class="h-full flex flex-col items-center justify-center text-slate-200">
+                    <i class="fa-solid fa-message text-6xl mb-4 opacity-10"></i>
+                    <p class="font-black text-[10px] uppercase tracking-widest">Select to Chat</p>
                 </div>
             </div>
 
-            <!-- Bottom Input Bar -->
-            <div class="p-6 pt-2 shrink-0 bg-white">
-                <form id="form-msg" class="max-w-4xl mx-auto flex items-center gap-3 bg-slate-50 border border-slate-100 shadow-sm rounded-3xl p-2 pl-6">
-                    <input type="text" id="input-msg" class="flex-1 py-3 text-sm bg-transparent border-none focus:ring-0 outline-none text-slate-700" placeholder="輸入訊息..." autocomplete="off">
-                    <button type="submit" class="bg-brand-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-all shrink-0">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
+            <!-- Input Area -->
+            <div class="p-6 bg-white flex items-center border-t border-slate-50">
+                <form onsubmit="window.doSend(event)" class="w-full flex gap-3 max-w-4xl mx-auto">
+                    <input id="msg-input" type="text" placeholder="Aa" class="flex-1 bg-slate-100 border-none rounded-2xl px-6 outline-none text-sm" autocomplete="off">
+                    <button type="submit" class="bg-brand-600 text-white w-12 h-12 rounded-2xl shadow-lg active:scale-90 transition"><i class="fa-solid fa-paper-plane"></i></button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Modals -->
-    <div id="modal-qr" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] hidden flex items-center justify-center p-6">
-        <div class="bg-white rounded-[3rem] p-10 w-full max-w-xs text-center shadow-2xl">
-            <h3 class="text-2xl font-black mb-8 text-slate-800">My Identity</h3>
-            <div id="qrcode-box" class="mb-8 p-4 bg-white border border-slate-100 rounded-[2rem] inline-block shadow-inner"></div>
-            <button onclick="document.getElementById('modal-qr').classList.add('hidden')" class="w-full py-4 bg-slate-100 rounded-2xl font-black text-slate-400 text-[10px] uppercase tracking-widest">Close</button>
+    <!-- QR Modal -->
+    <div id="modal-qr" class="fixed inset-0 bg-slate-900/60 z-[110] hidden flex items-center justify-center" onclick="this.classList.add('hidden')">
+        <div class="bg-white rounded-[3rem] p-10 text-center shadow-2xl" onclick="event.stopPropagation()">
+            <div id="qrcode" class="mb-6 p-4 border border-slate-100 rounded-[2rem] bg-white"></div>
+            <button onclick="document.getElementById('modal-qr').classList.add('hidden')" class="w-full py-4 bg-slate-50 rounded-2xl font-black text-slate-400 text-xs">CLOSE</button>
         </div>
     </div>
 
-    <div id="modal-search" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] hidden flex items-center justify-center p-6">
-        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl relative">
-            <button onclick="document.getElementById('modal-search').classList.add('hidden')" class="absolute right-6 top-6 text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark"></i></button>
-            <h3 class="text-xl font-black mb-6 text-slate-800">搜尋結果</h3>
-            <div id="search-results-list" class="space-y-3"></div>
-        </div>
-    </div>
-
-    <!-- Firebase SDKs -->
+    <!-- Firebase Script -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getFirestore, collection, query, where, getDocs, setDoc, addDoc, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, orderBy, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // ================= CONFIG =================
+        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyCRW_kRczHRAnllzoAjF1GSSX_5wCtV_P4",
 			authDomain: "campus-im-system.firebaseapp.com",
@@ -185,278 +147,194 @@
         const auth = getAuth(fb);
         const db = getFirestore(fb);
 
-        let currentUser = null;
-        let activeChatId = null;
-        let unsubscribeMessages = null;
+        // --- 全域變數 ---
+        let me = null;
+        let cid = null;
+        let unsub = null;
+        let currentTab = 'chats';
 
-        // ================= CORE FUNCTIONS =================
-
-        // 登入
-        document.getElementById('login-btn').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
-
-        // 登出
-        document.getElementById('btn-logout').onclick = () => signOut(auth).then(() => location.reload());
-
-        // 返回 (手機)
-        document.getElementById('btn-back').onclick = () => {
-            activeChatId = null;
-            document.getElementById('chat-view-container').classList.remove('active');
+        // --- 全域函數掛載 ---
+        window.doLogin = () => signInWithPopup(auth, new GoogleAuthProvider());
+        window.doLogout = () => signOut(auth).then(() => location.reload());
+        window.closeChat = () => { cid = null; document.getElementById('chat-panel').classList.remove('active'); };
+        
+        window.switchTab = (tab) => {
+            currentTab = tab;
+            document.getElementById('t-chats').className = tab==='chats' ? 'flex-1 py-4 text-sm font-bold text-brand-600 border-b-2 border-brand-600' : 'flex-1 py-4 text-sm font-bold text-slate-400 border-b-2 border-transparent';
+            document.getElementById('t-contacts').className = tab==='contacts' ? 'flex-1 py-4 text-sm font-bold text-brand-600 border-b-2 border-brand-600' : 'flex-1 py-4 text-sm font-bold text-slate-400 border-b-2 border-transparent';
+            if(tab === 'chats') listenChats(); else loadContacts();
         };
 
-        // 顯示 QR
-        document.getElementById('btn-qr').onclick = () => {
-            const box = document.getElementById('qrcode-box');
-            box.innerHTML = "";
-            const url = `${window.location.origin}${window.location.pathname}?uid=${currentUser.uid}`;
-            new QRCode(box, { text: url, width: 160, height: 160, colorDark : "#222" });
+        window.showQR = () => {
+            document.getElementById('qrcode').innerHTML = "";
+            const url = `${window.location.origin}${window.location.pathname}?uid=${me.uid}`;
+            new QRCode(document.getElementById('qrcode'), { text: url, width: 180, height: 180 });
             document.getElementById('modal-qr').classList.remove('hidden');
         };
 
-        // 分頁切換
-        window.switchTab = (tab) => {
-            const isChat = tab === 'chats';
-            document.getElementById('tab-btn-chats').className = isChat ? 'relative py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600 transition-all' : 'relative py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent';
-            document.getElementById('tab-btn-contacts').className = !isChat ? 'relative py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600 transition-all' : 'relative py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent';
-            document.getElementById('chat-list-container').classList.toggle('hidden', !isChat);
-            document.getElementById('contact-list-container').classList.toggle('hidden', isChat);
-            if(!isChat) renderContacts();
-        };
-
-        // 搜尋使用者
-        document.getElementById('search-btn-go').onclick = async () => {
+        window.doSearch = async () => {
             const val = document.getElementById('search-input').value.trim();
             if(!val) return;
-            const resBox = document.getElementById('search-results-list');
-            resBox.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-brand-600"></i></div>';
-            document.getElementById('modal-search').classList.remove('hidden');
-
             let q = query(collection(db, "users"), where("email", "==", val));
             let snap = await getDocs(q);
-            if(snap.empty) {
-                q = query(collection(db, "users"), where("studentId", "==", val));
-                snap = await getDocs(q);
-            }
-            
-            resBox.innerHTML = "";
-            if(snap.empty) {
-                resBox.innerHTML = '<p class="text-center text-slate-400 py-4 font-bold">找不到此使用者</p>';
-                return;
-            }
-            
-            snap.forEach(d => {
-                const u = d.data();
-                if(u.uid === currentUser.uid) return;
-                const div = document.createElement('div');
-                div.className = "flex justify-between items-center p-4 bg-slate-50 rounded-[2rem] cursor-pointer hover:bg-white border border-slate-100 transition-all shadow-sm";
-                div.innerHTML = `<div class="flex items-center gap-4"><img src="${u.photoURL}" class="w-11 h-11 rounded-2xl shadow-sm"><div class="font-bold text-slate-800 text-sm">${u.displayName}</div></div><i class="fa-solid fa-plus text-brand-600"></i>`;
-                div.onclick = () => startChatWithUser(u.uid);
-                resBox.appendChild(div);
-            });
+            if(snap.empty) { q = query(collection(db, "users"), where("studentId", "==", val)); snap = await getDocs(q); }
+            if(snap.empty) { alert("找不到使用者"); return; }
+            const u = snap.docs[0].data();
+            if(u.uid !== me.uid) window.startChat(u.uid);
         };
 
-        // 建立/跳轉聊天 (核心)
-        async function startChatWithUser(targetId) {
-            document.getElementById('modal-search').classList.add('hidden');
-            await updateDoc(doc(db, "users", currentUser.uid), { contacts: arrayUnion(targetId) });
-            await updateDoc(doc(db, "users", targetId), { contacts: arrayUnion(currentUser.uid) });
-
-            const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid));
+        window.startChat = async (targetId) => {
+            await updateDoc(doc(db, "users", me.uid), { contacts: arrayUnion(targetId) });
+            await updateDoc(doc(db, "users", targetId), { contacts: arrayUnion(me.uid) });
+            const q = query(collection(db, "chats"), where("members", "array-contains", me.uid));
             const snap = await getDocs(q);
-            let cid = null;
-            snap.forEach(d => { if(d.data().members.includes(targetId) && d.data().type === 'private') cid = d.id; });
+            let targetCid = null;
+            snap.forEach(d => { if(d.data().members.includes(targetId)) targetCid = d.id; });
 
-            if(!cid) {
+            if(!targetCid) {
                 const res = await addDoc(collection(db, "chats"), {
-                    members: [currentUser.uid, targetId],
-                    type: 'private',
-                    updatedAt: serverTimestamp(),
-                    lastMessage: '新連結已建立'
+                    members: [me.uid, targetId], type: 'private', updatedAt: serverTimestamp(), lastMessage: '建立連結'
                 });
-                cid = res.id;
+                targetCid = res.id;
             }
-            loadChatChannel(cid);
-        }
+            window.loadChat(targetCid);
+        };
 
-        // ================= 頻道切換修復 (核心：事件代理) =================
-        
-        // 點擊事件代理：監聽大容器上的點擊，判斷是否點到頻道
-        document.getElementById('chat-list-container').addEventListener('click', (e) => {
-            const channelItem = e.target.closest('[data-chat-id]');
-            if (channelItem) {
-                const chatId = channelItem.getAttribute('data-chat-id');
-                loadChatChannel(chatId);
-            }
-        });
+        // --- 重點修復：點擊切換邏輯 ---
+        window.loadChat = async (id) => {
+            if(cid === id) return; 
+            console.log("切換對話至:", id);
+            cid = id;
 
-        // 聯絡人清單點擊代理
-        document.getElementById('contact-list-container').addEventListener('click', (e) => {
-            const contactItem = e.target.closest('[data-user-id]');
-            if (contactItem) {
-                const userId = contactItem.getAttribute('data-user-id');
-                startChatWithUser(userId);
-            }
-        });
-
-        // 讀取對話內容
-        async function loadChatChannel(id) {
-            console.log("正在切換至頻道:", id);
-            activeChatId = id;
+            // UI
+            const panel = document.getElementById('chat-panel');
+            panel.classList.add('active');
             
-            // UI 更新
-            document.getElementById('chat-view-container').classList.add('active');
-            document.getElementById('hint-empty').classList.add('hidden');
-            
-            // 讀取標題資訊
+            // Header
             const snap = await getDoc(doc(db, "chats", id));
-            const data = snap.data();
-            const otherId = data.members.find(m => m !== currentUser.uid);
+            const cData = snap.data();
+            const otherId = cData.members.find(m => m !== me.uid);
             const uSnap = await getDoc(doc(db, "users", otherId));
             const uData = uSnap.data();
 
-            document.getElementById('header-title').innerText = uData.displayName;
-            document.getElementById('header-subtitle').innerText = uData.email;
-            document.getElementById('header-avatar').style.backgroundImage = `url(${uData.photoURL})`;
+            document.getElementById('h-name').innerText = uData.displayName;
+            document.getElementById('h-avatar').style.backgroundImage = `url(${uData.photoURL})`;
+            document.getElementById('h-sub').innerText = uData.email;
 
-            // 實時監聽訊息
-            if(unsubscribeMessages) unsubscribeMessages();
+            // Messages
+            if(unsub) unsub();
             const mq = query(collection(db, "chats", id, "messages"), orderBy("timestamp", "asc"));
-            unsubscribeMessages = onSnapshot(mq, (msnap) => {
-                const cont = document.getElementById('messages-list');
-                cont.innerHTML = "";
+            unsub = onSnapshot(mq, (msnap) => {
+                const box = document.getElementById('msg-box');
+                box.innerHTML = "";
                 msnap.forEach(m => {
                     const msg = m.data();
-                    const isMe = msg.senderId === currentUser.uid;
-                    const html = isMe ? `
-                        <div class="flex justify-end fade-in">
+                    const isMe = msg.senderId === me.uid;
+                    const time = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}) : '';
+                    const html = `
+                        <div class="flex ${isMe?'justify-end':'justify-start gap-3'}">
+                            ${!isMe ? `<div class="w-8 h-8 rounded-lg bg-cover mt-1 shrink-0" style="background-image:url(${uData.photoURL})"></div>` : ''}
                             <div class="max-w-[75%]">
-                                <div class="msg-bubble-me bg-brand-600 text-white px-5 py-3 text-sm">${msg.text}</div>
-                                <div class="text-[9px] mt-2 font-bold text-slate-400 text-right uppercase tracking-tighter">${msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}) : ''}</div>
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="flex justify-start gap-3 fade-in">
-                            <div class="w-9 h-9 rounded-xl bg-slate-200 bg-cover shrink-0 mt-1" style="background-image:url(${uData.photoURL})"></div>
-                            <div class="max-w-[75%]">
-                                <p class="text-[10px] font-black text-slate-300 mb-1.5 ml-1 uppercase tracking-widest">${uData.displayName}</p>
-                                <div class="msg-bubble-other bg-white text-slate-700 px-5 py-3 text-sm border border-slate-100 shadow-sm">${msg.text}</div>
-                                <div class="text-[9px] mt-2 font-bold text-slate-300 uppercase tracking-tighter">${msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}) : ''}</div>
+                                ${!isMe ? `<div class="text-[9px] font-bold text-slate-300 ml-1 mb-1">${uData.displayName}</div>` : ''}
+                                <div class="px-5 py-3 text-sm ${isMe?'msg-bubble-me':'msg-bubble-other'}">${msg.text}</div>
+                                <div class="text-[8px] mt-1 text-slate-300 font-bold ${isMe?'text-right':''}">${time}</div>
                             </div>
                         </div>
                     `;
-                    cont.insertAdjacentHTML('beforeend', html);
+                    box.insertAdjacentHTML('beforeend', html);
                 });
-                cont.scrollTop = cont.scrollHeight;
+                box.scrollTop = box.scrollHeight;
+            });
+        };
+
+        window.doSend = async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('msg-input');
+            const txt = input.value.trim();
+            if(!txt || !cid) return;
+            input.value = "";
+            await addDoc(collection(db, "chats", cid, "messages"), { text: txt, senderId: me.uid, timestamp: serverTimestamp() });
+            await updateDoc(doc(db, "chats", cid), { lastMessage: txt, updatedAt: serverTimestamp() });
+        };
+
+        // --- 列表渲染修復 ---
+        function listenChats() {
+            const q = query(collection(db, "chats"), where("members", "array-contains", me.uid));
+            onSnapshot(q, (snap) => {
+                if(currentTab !== 'chats') return;
+                const container = document.getElementById('list-container');
+                container.innerHTML = "";
+                
+                let list = [];
+                snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+                list.sort((a,b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
+
+                list.forEach(c => {
+                    const otherId = c.members.find(m => m !== me.uid);
+                    // 為了解決鎖死，這裡改用獨立的 getDoc 異步更新名稱
+                    const div = document.createElement('div');
+                    div.id = `item-${c.id}`;
+                    div.className = `p-4 flex items-center gap-4 bg-white/50 rounded-[2rem] cursor-pointer hover:bg-white transition-all shadow-sm ${cid===c.id?'ring-2 ring-brand-500 bg-white':''}`;
+                    div.innerHTML = `
+                        <div id="img-${c.id}" class="w-12 h-12 rounded-2xl bg-slate-100 bg-cover"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-baseline"><div id="name-${c.id}" class="font-bold text-sm truncate">...</div><div class="text-[9px] text-slate-300 font-bold">${c.updatedAt ? '剛才' : ''}</div></div>
+                            <div class="text-xs text-slate-400 truncate">${c.lastMessage}</div>
+                        </div>
+                    `;
+                    div.onclick = () => window.loadChat(c.id);
+                    container.appendChild(div);
+
+                    getDoc(doc(db, "users", otherId)).then(u => {
+                        const ud = u.data();
+                        document.getElementById(`name-${c.id}`).innerText = ud.displayName;
+                        document.getElementById(`img-${c.id}`).style.backgroundImage = `url(${ud.photoURL})`;
+                    });
+                });
             });
         }
 
-        // 渲染聯絡人
-        async function renderContacts() {
-            const snap = await getDoc(doc(db, "users", currentUser.uid));
-            const list = document.getElementById('contact-list-container');
-            list.innerHTML = "";
+        async function loadContacts() {
+            const snap = await getDoc(doc(db, "users", me.uid));
+            const container = document.getElementById('list-container');
+            container.innerHTML = "";
             const ids = snap.data().contacts || [];
             for(const id of ids) {
-                const us = await getDoc(doc(db, "users", id));
-                if(us.exists()) {
-                    const u = us.data();
-                    const html = `
-                        <div data-user-id="${u.uid}" class="group flex items-center gap-4 p-4 hover:bg-white rounded-[2rem] transition-all cursor-pointer border border-transparent shadow-sm">
-                            <img src="${u.photoURL}" class="w-12 h-12 rounded-[1.2rem] shadow-sm">
-                            <div class="flex-1">
-                                <div class="font-bold text-slate-800 text-sm">${u.displayName}</div>
-                                <div class="text-[10px] text-slate-400 font-bold tracking-tighter uppercase">${u.email}</div>
-                            </div>
-                        </div>
-                    `;
-                    list.insertAdjacentHTML('beforeend', html);
-                }
+                const u = await getDoc(doc(db, "users", id));
+                const ud = u.data();
+                const div = document.createElement('div');
+                div.className = "p-4 flex items-center gap-4 bg-white/50 rounded-[2rem] cursor-pointer hover:bg-white";
+                div.innerHTML = `<img src="${ud.photoURL}" class="w-12 h-12 rounded-2xl"><div class="font-bold text-sm">${ud.displayName}</div>`;
+                div.onclick = () => window.startChat(id);
+                container.appendChild(div);
             }
         }
 
-        // 傳送訊息
-        document.getElementById('form-msg').onsubmit = async (e) => {
-            e.preventDefault();
-            const input = document.getElementById('input-msg');
-            const txt = input.value.trim();
-            if(!txt || !activeChatId) return;
-            input.value = "";
-            await addDoc(collection(db, "chats", activeChatId, "messages"), {
-                text: txt, senderId: currentUser.uid, timestamp: serverTimestamp()
-            });
-            await updateDoc(doc(db, "chats", activeChatId), { lastMessage: txt, updatedAt: serverTimestamp() });
-        };
+        window.doBlock = async () => { if(confirm('封鎖？')) { const snap = await getDoc(doc(db, "chats", cid)); const other = snap.data().members.find(m => m !== me.uid); await updateDoc(doc(db, "users", me.uid), { blockedUsers: arrayUnion(other) }); window.closeChat(); } };
+        window.doDeleteChat = async () => { if(confirm('刪除頻道？')) { await deleteDoc(doc(db, "chats", cid)); window.closeChat(); } };
 
-        // 管理功能
-        document.getElementById('btn-delete-chat').onclick = async () => { if(confirm('刪除此對話頻道？')) { await deleteDoc(doc(db, "chats", activeChatId)); window.closeChat(); } };
-        document.getElementById('btn-block').onclick = async () => { if(confirm('封鎖此使用者？')) { 
-            const snap = await getDoc(doc(db, "chats", activeChatId));
-            const otherId = snap.data().members.find(m => m !== currentUser.uid);
-            await updateDoc(doc(db, "users", currentUser.uid), { blockedUsers: arrayUnion(otherId) });
-            window.closeChat();
-        }};
-
-        // ================= AUTH OBSERVER =================
-        onAuthStateChanged(auth, async (u) => {
-            if (u) {
-                currentUser = u;
+        // --- Auth ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                me = user;
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-screen').classList.remove('hidden');
-                document.getElementById('my-avatar').style.backgroundImage = `url(${u.photoURL})`;
-                document.getElementById('my-name').innerText = u.displayName;
+                document.getElementById('my-avatar').style.backgroundImage = `url(${user.photoURL})`;
+                document.getElementById('my-name').innerText = user.displayName;
 
-                const uref = doc(db, "users", u.uid);
-                const usnap = await getDoc(uref);
-                if(!usnap.exists()) {
-                    await setDoc(uref, { uid: u.uid, email: u.email, displayName: u.displayName, photoURL: u.photoURL, studentId: Math.floor(100000 + Math.random() * 900000).toString(), contacts: [], blockedUsers: [] });
-                } else {
-                    document.getElementById('my-id').innerText = `ID: ${usnap.data().studentId}`;
-                }
+                const ref = doc(db, "users", user.uid);
+                const snap = await getDoc(ref);
+                if(!snap.exists()) await setDoc(ref, { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL, studentId: Math.floor(100000 + Math.random() * 900000).toString(), contacts: [], blockedUsers: [] });
+                else document.getElementById('my-id').innerText = `ID: ${snap.data().studentId}`;
 
-                // 監聽頻道列表
-                const cq = query(collection(db, "chats"), where("members", "array-contains", u.uid));
-                onSnapshot(cq, async (snap) => {
-                    const list = document.getElementById('chat-list-container');
-                    const items = [];
-                    for (const d of snap.docs) {
-                        const cData = d.data();
-                        const oId = cData.members.find(m => m !== u.uid);
-                        const oSnap = await getDoc(doc(db, "users", oId));
-                        if(oSnap.exists() && !usnap.data().blockedUsers?.includes(oId)) {
-                            items.push({ id: d.id, ...cData, user: oSnap.data() });
-                        }
-                    }
-                    items.sort((a,b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
-                    
-                    list.innerHTML = "";
-                    items.forEach(c => {
-                        const html = `
-                            <div data-chat-id="${c.id}" class="group p-4 flex items-center gap-4 hover:bg-white rounded-[2rem] cursor-pointer transition-all border border-transparent shadow-sm ${activeChatId === c.id ? 'bg-white shadow-lg border-slate-100 ring-1 ring-slate-50' : ''}">
-                                <img src="${c.user.photoURL}" class="w-14 h-14 rounded-[1.5rem] shadow-sm border border-slate-50">
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex justify-between items-baseline mb-1">
-                                        <div class="font-bold text-sm text-slate-800 truncate">${c.user.displayName}</div>
-                                        <div class="text-[9px] font-black text-slate-300 uppercase">${c.updatedAt ? new Date(c.updatedAt.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}) : ''}</div>
-                                    </div>
-                                    <div class="text-xs text-slate-400 truncate font-medium">${c.lastMessage}</div>
-                                </div>
-                            </div>
-                        `;
-                        list.insertAdjacentHTML('beforeend', html);
-                    });
-                });
-
-                // QR 自動處理
+                listenChats();
                 const params = new URLSearchParams(window.location.search);
-                if(params.get('uid') && params.get('uid') !== u.uid) {
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    startChatWithUser(params.get('uid'));
-                }
+                if(params.get('uid') && params.get('uid') !== user.uid) { window.history.replaceState({}, '', window.location.pathname); window.startChat(params.get('uid')); }
             } else {
                 document.getElementById('login-screen').classList.remove('hidden');
                 document.getElementById('app-screen').classList.add('hidden');
             }
         });
-
     </script>
 </body>
 </html>

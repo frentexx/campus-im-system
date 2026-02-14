@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CampusConnect | Premium Messaging</title>
+    <title>CampusConnect | v3.1 Fixed</title>
     
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -24,173 +23,142 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
-        .app-height { height: 100vh; height: -webkit-fill-available; }
-        
-        /* 現代氣泡樣式 */
-        .msg-bubble-me { border-radius: 20px 20px 4px 20px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15); }
+        body { font-family: 'Inter', sans-serif; height: 100vh; height: -webkit-fill-available; overflow: hidden; background-color: #f1f5f9; }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .msg-bubble-me { border-radius: 20px 20px 4px 20px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1); }
         .msg-bubble-other { border-radius: 20px 20px 20px 4px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
         
-        /* 磨砂玻璃效果 */
-        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        /* 核心佈局修復 */
+        .main-container { height: 100vh; display: flex; flex-direction: column; }
+        .content-area { flex: 1; display: flex; overflow: hidden; }
         
-        /* 切換動畫 */
-        .fade-in { animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* 手機端側邊欄與聊天切換 */
+        /* 手機端處理 */
         @media (max-width: 767px) {
-            .mobile-view { position: fixed; inset: 0; z-index: 50; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+            .mobile-view { position: fixed; inset: 0; z-index: 50; transition: transform 0.3s ease; }
             .mobile-view.hide { transform: translateX(100%); }
         }
-        
-        /* 隱藏捲軸 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="overflow-hidden">
+<body class="main-container">
 
-    <!-- ================= 登入頁面 ================= -->
+    <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8">
         <div class="w-full max-w-sm text-center">
-            <div class="w-20 h-20 bg-brand-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-brand-200">
+            <div class="w-20 h-20 bg-brand-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl">
                 <i class="fa-solid fa-bolt text-white text-3xl"></i>
             </div>
-            <h1 class="text-4xl font-extrabold text-slate-900 mb-2">CampusConnect</h1>
-            <p class="text-slate-400 mb-12 font-medium">新世代校園社群</p>
-            
-            <button onclick="app.login()" class="w-full flex items-center justify-center gap-4 bg-slate-900 text-white font-bold py-4 px-6 rounded-2xl active:scale-95 transition-all shadow-xl hover:bg-slate-800">
+            <h1 class="text-4xl font-extrabold text-slate-900 mb-8">CampusConnect</h1>
+            <button onclick="window.login()" class="w-full flex items-center justify-center gap-4 bg-slate-900 text-white font-bold py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-800 transition-all">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6">
-                使用 Google 帳號登入
+                使用 Google 登入
             </button>
         </div>
     </div>
 
-    <!-- ================= 主程式容器 ================= -->
-    <div id="app-screen" class="hidden flex app-height w-full overflow-hidden p-0 md:p-4 lg:p-6 gap-0 md:gap-4 lg:gap-6 bg-slate-50">
+    <!-- App Main UI -->
+    <div id="app-screen" class="hidden content-area p-0 md:p-4 lg:p-6 gap-0 md:gap-6">
         
-        <!-- 左側：列表區 -->
-        <div id="sidebar" class="w-full md:w-[320px] lg:w-[380px] bg-white/70 glass-panel md:rounded-3xl flex flex-col overflow-hidden shrink-0 border border-white shadow-xl">
-            
-            <!-- 個人資訊 -->
-            <div class="p-6 pb-4 flex items-center justify-between">
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-full md:w-[350px] bg-white/70 glass-panel md:rounded-[2.5rem] flex flex-col shrink-0 border border-white shadow-xl">
+            <!-- Profile -->
+            <div class="p-6 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div id="my-avatar" class="w-11 h-11 rounded-2xl bg-slate-200 bg-cover border border-white shadow-sm"></div>
-                    <div class="overflow-hidden">
-                        <div id="my-name" class="font-bold text-slate-800 text-sm truncate">載入中...</div>
+                    <div id="my-avatar" class="w-12 h-12 rounded-2xl bg-slate-200 bg-cover shadow-inner border-2 border-white"></div>
+                    <div>
+                        <div id="my-name" class="font-bold text-slate-800 text-sm">...</div>
                         <div id="my-id" class="text-[10px] font-black text-brand-600 tracking-tighter">ID: ...</div>
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="app.showQRModal()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all"><i class="fa-solid fa-qrcode"></i></button>
-                    <!-- 紅色電源圖示（登出） -->
-                    <button onclick="auth.signOut(window.authInstance)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all border border-red-100"><i class="fa-solid fa-power-off"></i></button>
+                    <button onclick="window.showQRModal()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"><i class="fa-solid fa-qrcode"></i></button>
+                    <button onclick="window.logout()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100"><i class="fa-solid fa-power-off"></i></button>
                 </div>
             </div>
 
-            <!-- 分頁標籤 -->
+            <!-- Tabs -->
             <div class="flex px-6 mb-4 gap-6 border-b border-slate-100/50">
-                <button onclick="ui.switchTab('chats')" id="tab-chats" class="relative py-3 text-sm font-bold text-brand-600 transition-all">聊天頻道<span id="tab-line-chats" class="absolute bottom-0 left-0 w-full h-1 bg-brand-600 rounded-full"></span></button>
-                <button onclick="ui.switchTab('contacts')" id="tab-contacts" class="relative py-3 text-sm font-bold text-slate-400 transition-all">聯絡人<span id="tab-line-contacts" class="hidden absolute bottom-0 left-0 w-full h-1 bg-brand-600 rounded-full"></span></button>
+                <button onclick="window.switchTab('chats')" id="tab-chats" class="relative py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600 transition-all">聊天頻道</button>
+                <button onclick="window.switchTab('contacts')" id="tab-contacts" class="relative py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent transition-all">聯絡人</button>
             </div>
 
-            <!-- 搜尋欄 -->
+            <!-- Search -->
             <div class="px-6 mb-4">
                 <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-4 text-slate-300 text-xs"></i>
-                    <input type="text" id="search-input" placeholder="搜尋新朋友..." class="w-full pl-10 pr-4 py-3.5 bg-slate-100/50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-brand-500/10 transition-all outline-none">
-                    <button id="search-btn" class="absolute right-2 top-2 bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest">GO</button>
+                    <input type="text" id="search-input" placeholder="搜尋 Email 或學號..." class="w-full pl-4 pr-12 py-3.5 bg-slate-100/50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-brand-500/20 outline-none">
+                    <button id="search-btn" onclick="window.searchUser()" class="absolute right-2 top-2 bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[10px] font-black">GO</button>
                 </div>
             </div>
 
-            <!-- 清單滾動區 -->
+            <!-- Scroll List -->
             <div class="flex-1 overflow-y-auto px-4 no-scrollbar pb-10">
                 <div id="chat-list" class="space-y-1"></div>
                 <div id="contact-list" class="space-y-1 hidden"></div>
             </div>
         </div>
 
-        <!-- 右側：聊天主區 -->
-        <div id="chat-area" class="mobile-view hide flex-1 bg-white/80 glass-panel md:rounded-3xl flex flex-col overflow-hidden border border-white shadow-2xl relative">
+        <!-- Chat Area -->
+        <div id="chat-area" class="mobile-view hide flex-1 bg-white/80 glass-panel md:rounded-[2.5rem] flex flex-col border border-white shadow-2xl overflow-hidden">
             
-            <!-- 聊天室頂部 -->
-            <div class="h-20 px-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/50">
+            <!-- Header -->
+            <div class="h-20 px-6 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-4 min-w-0">
-                    <button onclick="ui.closeChat()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button onclick="window.closeChat()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100"><i class="fa-solid fa-chevron-left text-slate-500"></i></button>
                     <div id="header-avatar" class="w-11 h-11 rounded-2xl bg-slate-100 bg-cover border border-slate-200"></div>
                     <div class="overflow-hidden">
                         <h3 id="header-title" class="font-bold text-slate-800 leading-tight truncate">選擇對話</h3>
-                        <p id="header-subtitle" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">準備開始聊天</p>
+                        <p id="header-subtitle" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Now</p>
                     </div>
                 </div>
-                <!-- 更多功能選單 -->
                 <div class="flex gap-1">
-                    <button onclick="app.blockUser()" title="封鎖聯絡人" class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"><i class="fa-solid fa-ban text-sm"></i></button>
-                    <button onclick="app.deleteCurrentChat()" title="刪除頻道" class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"><i class="fa-solid fa-trash-can text-sm"></i></button>
+                    <button onclick="window.blockUser()" class="w-9 h-9 text-slate-300 hover:text-red-500 transition-all"><i class="fa-solid fa-ban text-sm"></i></button>
+                    <button onclick="window.deleteChat()" class="w-9 h-9 text-slate-300 hover:text-red-500 transition-all"><i class="fa-solid fa-trash-can text-sm"></i></button>
                 </div>
             </div>
 
-            <!-- 訊息對話區 -->
-            <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
-                <div id="chat-empty-state" class="h-full flex flex-col items-center justify-center text-slate-300">
-                    <i class="fa-solid fa-message-dots text-5xl mb-4 opacity-10"></i>
-                    <p class="font-black uppercase tracking-widest text-[10px]">No Messages</p>
+            <!-- Messages (Flex-1 grows to fill) -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar bg-white/30">
+                <div id="empty-state" class="h-full flex flex-col items-center justify-center text-slate-200">
+                    <i class="fa-solid fa-comments text-5xl mb-3 opacity-20"></i>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em]">Start a new conversation</p>
                 </div>
             </div>
 
-            <!-- 底部輸入框 (Floating Bar) -->
-            <div class="p-6 pt-0 shrink-0 bg-gradient-to-t from-white to-transparent">
-                <form id="message-form" class="max-w-4xl mx-auto flex items-center gap-3 bg-white border border-slate-100 shadow-2xl rounded-3xl p-2 pl-6">
+            <!-- Input (Shrink-0 stays at bottom) -->
+            <div class="p-6 pt-2 shrink-0">
+                <form id="message-form" onsubmit="window.sendMessage(event)" class="max-w-4xl mx-auto flex items-center gap-3 bg-white border border-slate-100 shadow-xl rounded-3xl p-2 pl-6">
                     <input type="text" id="message-input" class="flex-1 py-3 text-sm border-none focus:ring-0 outline-none placeholder:text-slate-300" placeholder="Aa" autocomplete="off">
-                    <button type="submit" class="bg-brand-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-200 active:scale-90 transition-all">
+                    <button type="submit" class="bg-brand-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </form>
             </div>
-
-            <!-- 訊息選單彈窗 -->
-            <div id="msg-menu" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-6" onclick="this.classList.add('hidden')">
-                <div class="bg-white w-full max-w-[280px] rounded-[2rem] shadow-2xl overflow-hidden p-3 animate-in fade-in zoom-in duration-200" onclick="event.stopPropagation()">
-                    <button onclick="app.editMsgPrompt()" class="w-full text-left px-6 py-4 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-4 transition-all rounded-2xl">
-                        <i class="fa-solid fa-pen-to-square text-brand-600"></i> 修改訊息
-                    </button>
-                    <button onclick="app.deleteMsg()" class="w-full text-left px-6 py-4 hover:bg-red-50 text-red-600 font-bold flex items-center gap-4 transition-all rounded-2xl">
-                        <i class="fa-solid fa-trash"></i> 刪除訊息
-                    </button>
-                    <div class="h-px bg-slate-100 my-2"></div>
-                    <button onclick="document.getElementById('msg-menu').classList.add('hidden')" class="w-full text-center py-3 text-slate-400 text-[10px] font-black uppercase tracking-widest">關閉</button>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- 掃描用的 QR 彈窗 -->
+    <!-- Modals -->
     <div id="qr-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] hidden flex items-center justify-center p-6" onclick="this.classList.add('hidden')">
         <div class="bg-white rounded-[3rem] p-10 w-full max-w-xs text-center shadow-2xl" onclick="event.stopPropagation()">
-            <h3 class="text-2xl font-black mb-2 text-slate-800">My Code</h3>
-            <p class="text-slate-400 text-[10px] font-bold mb-8 uppercase tracking-[0.2em]">Scan to Start</p>
-            <div id="qrcode" class="mb-8 p-4 bg-white border border-slate-100 rounded-[2.5rem] inline-block shadow-inner"></div>
-            <button onclick="document.getElementById('qr-modal').classList.add('hidden')" class="w-full py-4 bg-slate-100 rounded-2xl font-black text-slate-500 uppercase tracking-widest text-[10px]">Close</button>
+            <h3 class="text-xl font-black mb-8 text-slate-800">My QR Identity</h3>
+            <div id="qrcode" class="mb-8 p-4 bg-white border border-slate-100 rounded-[2.5rem] inline-block"></div>
+            <button onclick="document.getElementById('qr-modal').classList.add('hidden')" class="w-full py-4 bg-slate-50 rounded-2xl font-black text-slate-400 text-[10px] uppercase">Close</button>
         </div>
     </div>
 
-    <!-- 搜尋結果彈窗 -->
     <div id="search-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] hidden flex items-center justify-center p-6" onclick="this.classList.add('hidden')">
-        <div class="bg-white rounded-[3rem] p-8 w-full max-w-sm shadow-2xl" onclick="event.stopPropagation()">
-            <h3 class="text-xl font-black mb-6 text-slate-800">搜尋結果</h3>
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl" onclick="event.stopPropagation()">
+            <h3 class="text-lg font-black mb-6">搜尋結果</h3>
             <div id="search-results" class="space-y-3"></div>
-            <button onclick="document.getElementById('search-modal').classList.add('hidden')" class="w-full mt-6 py-4 text-slate-400 font-black text-[10px] uppercase tracking-widest">關閉</button>
         </div>
     </div>
 
-    <!-- ================= 核心邏輯 (Firebase) ================= -->
+    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getFirestore, collection, query, where, getDocs, setDoc, addDoc, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, orderBy, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // 1. Firebase 配置
+        // ================= CONFIG =================
         const firebaseConfig = {
             apiKey: "AIzaSyCRW_kRczHRAnllzoAjF1GSSX_5wCtV_P4",
 			authDomain: "campus-im-system.firebaseapp.com",
@@ -205,185 +173,41 @@
         const auth = getAuth(fb);
         const db = getFirestore(fb);
 
-        // 導出到 window 確保 onclick 可用
-        window.auth = { signOut };
-        window.authInstance = auth;
-        window.db = db;
-
         let currentUser = null;
         let currentChatId = null;
-        let selectedMsgId = null;
         let unsubMsgs = null;
 
-        // 2. UI 操作
-        window.ui = {
-            switchTab: (tab) => {
-                const isChat = tab === 'chats';
-                document.getElementById('tab-line-chats').classList.toggle('hidden', !isChat);
-                document.getElementById('tab-line-contacts').classList.toggle('hidden', isChat);
-                document.getElementById('tab-chats').className = isChat ? 'relative py-3 text-sm font-bold text-brand-600 transition-all' : 'relative py-3 text-sm font-bold text-slate-400 transition-all';
-                document.getElementById('tab-contacts').className = !isChat ? 'relative py-3 text-sm font-bold text-brand-600 transition-all' : 'relative py-3 text-sm font-bold text-slate-400 transition-all';
-                
-                document.getElementById('chat-list').classList.toggle('hidden', !isChat);
-                document.getElementById('contact-list').classList.toggle('hidden', isChat);
-                if(!isChat) app.loadContacts();
-            },
-            closeChat: () => {
-                currentChatId = null;
-                document.getElementById('chat-area').classList.add('hide');
-            },
-            formatTime: (ts) => {
-                if(!ts) return '';
-                const d = ts.toDate();
-                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            }
+        // ================= GLOBAL BINDINGS =================
+        window.login = () => signInWithPopup(auth, new GoogleAuthProvider());
+        window.logout = () => signOut(auth);
+        
+        window.switchTab = (tab) => {
+            const isChat = tab === 'chats';
+            document.getElementById('tab-chats').className = isChat ? 'relative py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600' : 'relative py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent';
+            document.getElementById('tab-contacts').className = !isChat ? 'relative py-3 text-sm font-bold text-brand-600 border-b-2 border-brand-600' : 'relative py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent';
+            document.getElementById('chat-list').classList.toggle('hidden', !isChat);
+            document.getElementById('contact-list').classList.toggle('hidden', isChat);
+            if(!isChat) window.loadContacts();
         };
 
-        // 3. 業務邏輯
-        window.app = {
-            login: () => signInWithPopup(auth, new GoogleAuthProvider()),
-            showQRModal: () => {
-                document.getElementById('qrcode').innerHTML = "";
-                const url = `${window.location.origin}${window.location.pathname}?uid=${currentUser.uid}`;
-                new QRCode(document.getElementById("qrcode"), { text: url, width: 180, height: 180, colorDark : "#222" });
-                document.getElementById('qr-modal').classList.remove('hidden');
-            },
-            startChat: async (targetId) => {
-                document.getElementById('search-modal').classList.add('hidden');
-                
-                // 自動雙向加好友
-                await updateDoc(doc(db, "users", currentUser.uid), { contacts: arrayUnion(targetId) });
-                await updateDoc(doc(db, "users", targetId), { contacts: arrayUnion(currentUser.uid) });
-
-                const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid));
-                const snap = await getDocs(q);
-                let cid = null;
-                snap.forEach(d => { if(d.data().members.includes(targetId) && d.data().type === 'private') cid = d.id; });
-
-                if(!cid) {
-                    const res = await addDoc(collection(db, "chats"), {
-                        members: [currentUser.uid, targetId],
-                        type: 'private',
-                        updatedAt: serverTimestamp(),
-                        lastMessage: '我們已經建立連結了'
-                    });
-                    cid = res.id;
-                }
-                app.loadChat(cid);
-            },
-            loadChat: async (id) => {
-                currentChatId = id;
-                document.getElementById('chat-area').classList.remove('hide');
-                document.getElementById('chat-empty-state').classList.add('hidden');
-                
-                const snap = await getDoc(doc(db, "chats", id));
-                const data = snap.data();
-                const otherId = data.members.find(m => m !== currentUser.uid);
-                const uSnap = await getDoc(doc(db, "users", otherId));
-                const uData = uSnap.data();
-
-                document.getElementById('header-title').innerText = uData.displayName;
-                document.getElementById('header-subtitle').innerText = uData.email;
-                document.getElementById('header-avatar').style.backgroundImage = `url(${uData.photoURL})`;
-
-                if(unsubMsgs) unsubMsgs();
-                const mq = query(collection(db, "chats", id, "messages"), orderBy("timestamp", "asc"));
-                unsubMsgs = onSnapshot(mq, (msnap) => {
-                    const cont = document.getElementById('messages-container');
-                    cont.innerHTML = "";
-                    msnap.forEach(m => {
-                        const msg = m.data();
-                        const isMe = msg.senderId === currentUser.uid;
-                        const html = isMe ? `
-                            <div class="flex justify-end fade-in">
-                                <div class="max-w-[75%]">
-                                    <div onclick="app.openMsgMenu('${m.id}')" class="msg-bubble-me bg-brand-600 text-white px-5 py-3 text-sm cursor-pointer hover:brightness-110 transition-all">
-                                        ${msg.text}
-                                    </div>
-                                    <div class="text-[9px] mt-2 font-bold text-slate-400 text-right uppercase tracking-tighter">${ui.formatTime(msg.timestamp)}</div>
-                                </div>
-                            </div>
-                        ` : `
-                            <div class="flex justify-start gap-3 fade-in">
-                                <div class="w-9 h-9 rounded-xl bg-slate-200 bg-cover shrink-0 mt-1" style="background-image:url(${uData.photoURL})"></div>
-                                <div class="max-w-[75%]">
-                                    <p class="text-[10px] font-black text-slate-300 mb-1.5 ml-1 uppercase tracking-widest">${uData.displayName}</p>
-                                    <div class="msg-bubble-other bg-white text-slate-700 px-5 py-3 text-sm border border-slate-100 shadow-sm">
-                                        ${msg.text}
-                                    </div>
-                                    <div class="text-[9px] mt-2 font-bold text-slate-300 uppercase tracking-tighter">${ui.formatTime(msg.timestamp)}</div>
-                                </div>
-                            </div>
-                        `;
-                        cont.insertAdjacentHTML('beforeend', html);
-                    });
-                    cont.scrollTop = cont.scrollHeight;
-                });
-            },
-            openMsgMenu: (mid) => {
-                selectedMsgId = mid;
-                document.getElementById('msg-menu').classList.remove('hidden');
-            },
-            deleteMsg: async () => {
-                if(confirm('確定要刪除訊息？')) {
-                    await deleteDoc(doc(db, "chats", currentChatId, "messages", selectedMsgId));
-                    document.getElementById('msg-menu').classList.add('hidden');
-                }
-            },
-            editMsgPrompt: async () => {
-                const newText = prompt('修改內容:');
-                if(newText) {
-                    await updateDoc(doc(db, "chats", currentChatId, "messages", selectedMsgId), { text: newText });
-                    document.getElementById('msg-menu').classList.add('hidden');
-                }
-            },
-            deleteCurrentChat: async () => {
-                if(confirm('確定刪除此頻道？')) {
-                    await deleteDoc(doc(db, "chats", currentChatId));
-                    ui.closeChat();
-                }
-            },
-            blockUser: async () => {
-                if(confirm('確定封鎖此人？')) {
-                    const snap = await getDoc(doc(db, "chats", currentChatId));
-                    const otherId = snap.data().members.find(m => m !== currentUser.uid);
-                    await updateDoc(doc(db, "users", currentUser.uid), { blockedUsers: arrayUnion(otherId) });
-                    ui.closeChat();
-                }
-            },
-            loadContacts: async () => {
-                const snap = await getDoc(doc(db, "users", currentUser.uid));
-                const list = document.getElementById('contact-list');
-                list.innerHTML = "";
-                const ids = snap.data().contacts || [];
-                const blocked = snap.data().blockedUsers || [];
-                for(const id of ids) {
-                    if(blocked.includes(id)) continue;
-                    const us = await getDoc(doc(db, "users", id));
-                    if(us.exists()) {
-                        const u = us.data();
-                        const html = `
-                            <div onclick="app.startChat('${u.uid}')" class="group flex items-center gap-4 p-4 hover:bg-white rounded-[2rem] transition-all cursor-pointer border border-transparent hover:border-slate-100">
-                                <div class="w-12 h-12 rounded-[1.2rem] bg-slate-100 bg-cover border border-white shadow-sm" style="background-image:url(${u.photoURL})"></div>
-                                <div class="flex-1">
-                                    <div class="font-bold text-slate-800 text-sm">${u.displayName}</div>
-                                    <div class="text-[10px] font-black text-slate-300 uppercase tracking-tighter">${u.email}</div>
-                                </div>
-                                <i class="fa-solid fa-chevron-right text-slate-200 group-hover:text-brand-500 transition-colors"></i>
-                            </div>
-                        `;
-                        list.insertAdjacentHTML('beforeend', html);
-                    }
-                }
-            }
+        window.closeChat = () => {
+            currentChatId = null;
+            document.getElementById('chat-area').classList.add('hide');
         };
 
-        // 4. 事件監聽
-        document.getElementById('search-btn').onclick = async () => {
+        window.showQRModal = () => {
+            document.getElementById('qrcode').innerHTML = "";
+            const url = `${window.location.origin}${window.location.pathname}?uid=${currentUser.uid}`;
+            new QRCode(document.getElementById("qrcode"), { text: url, width: 160, height: 160, colorDark : "#222" });
+            document.getElementById('qr-modal').classList.remove('hidden');
+        };
+
+        // 搜尋使用者
+        window.searchUser = async () => {
             const val = document.getElementById('search-input').value.trim();
             if(!val) return;
             const resDiv = document.getElementById('search-results');
-            resDiv.innerHTML = '<div class="p-4 text-center"><i class="fa-solid fa-circle-notch fa-spin text-brand-600"></i></div>';
+            resDiv.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin text-brand-600"></i></div>';
             document.getElementById('search-modal').classList.remove('hidden');
 
             let q = query(collection(db, "users"), where("email", "==", val));
@@ -394,24 +218,99 @@
             }
             
             resDiv.innerHTML = "";
+            if(snap.empty) resDiv.innerHTML = '<p class="text-center text-slate-400 py-4">查無此人</p>';
+            
             snap.forEach(d => {
                 const u = d.data();
                 if(u.uid === currentUser.uid) return;
-                const html = `
-                    <div onclick="app.startChat('${u.uid}')" class="flex justify-between items-center p-5 bg-slate-50 rounded-[2.5rem] hover:bg-white transition-all cursor-pointer border border-slate-100 shadow-sm">
-                        <div class="flex items-center gap-4">
-                            <img src="${u.photoURL}" class="w-11 h-11 rounded-2xl">
-                            <div class="font-bold text-slate-800">${u.displayName}</div>
-                        </div>
-                        <div class="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white"><i class="fa-solid fa-plus"></i></div>
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-4 bg-slate-50 rounded-3xl cursor-pointer hover:bg-white border border-slate-100 transition-all shadow-sm";
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${u.photoURL}" class="w-10 h-10 rounded-2xl">
+                        <div class="font-bold text-slate-800 text-sm">${u.displayName}</div>
                     </div>
+                    <i class="fa-solid fa-plus text-brand-600"></i>
                 `;
-                resDiv.insertAdjacentHTML('beforeend', html);
+                div.onclick = () => window.startChat(u.uid);
+                resDiv.appendChild(div);
             });
-            if(resDiv.innerHTML === "") resDiv.innerHTML = '<p class="text-center text-slate-400 py-4 font-bold">找不到對象</p>';
         };
 
-        document.getElementById('message-form').onsubmit = async (e) => {
+        // 建立/啟動聊天 (核心)
+        window.startChat = async (targetId) => {
+            document.getElementById('search-modal').classList.add('hidden');
+            
+            // 自動加好友 (雙向)
+            await updateDoc(doc(db, "users", currentUser.uid), { contacts: arrayUnion(targetId) });
+            await updateDoc(doc(db, "users", targetId), { contacts: arrayUnion(currentUser.uid) });
+
+            const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid));
+            const snap = await getDocs(q);
+            let cid = null;
+            snap.forEach(d => { if(d.data().members.includes(targetId) && d.data().type === 'private') cid = d.id; });
+
+            if(!cid) {
+                const res = await addDoc(collection(db, "chats"), {
+                    members: [currentUser.uid, targetId],
+                    type: 'private',
+                    updatedAt: serverTimestamp(),
+                    lastMessage: '已經與您建立連結'
+                });
+                cid = res.id;
+            }
+            window.loadChat(cid);
+        };
+
+        // 讀取頻道
+        window.loadChat = async (id) => {
+            currentChatId = id;
+            document.getElementById('chat-area').classList.remove('hide');
+            document.getElementById('empty-state').classList.add('hidden');
+            
+            const snap = await getDoc(doc(db, "chats", id));
+            const data = snap.data();
+            const otherId = data.members.find(m => m !== currentUser.uid);
+            const uSnap = await getDoc(doc(db, "users", otherId));
+            const uData = uSnap.data();
+
+            document.getElementById('header-title').innerText = uData.displayName;
+            document.getElementById('header-subtitle').innerText = uData.email;
+            document.getElementById('header-avatar').style.backgroundImage = `url(${uData.photoURL})`;
+
+            if(unsubMsgs) unsubMsgs();
+            const mq = query(collection(db, "chats", id, "messages"), orderBy("timestamp", "asc"));
+            unsubMsgs = onSnapshot(mq, (msnap) => {
+                const cont = document.getElementById('messages-container');
+                cont.innerHTML = "";
+                msnap.forEach(m => {
+                    const msg = m.data();
+                    const isMe = msg.senderId === currentUser.uid;
+                    const html = isMe ? `
+                        <div class="flex justify-end fade-in">
+                            <div class="max-w-[75%]">
+                                <div class="msg-bubble-me bg-brand-600 text-white px-5 py-3 text-sm">${msg.text}</div>
+                                <div class="text-[9px] mt-2 font-bold text-slate-400 text-right uppercase tracking-tighter">${new Date(msg.timestamp?.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}</div>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="flex justify-start gap-3 fade-in">
+                            <div class="w-9 h-9 rounded-xl bg-slate-200 bg-cover shrink-0 mt-1" style="background-image:url(${uData.photoURL})"></div>
+                            <div class="max-w-[75%]">
+                                <p class="text-[10px] font-black text-slate-300 mb-1.5 ml-1 uppercase tracking-widest">${uData.displayName}</p>
+                                <div class="msg-bubble-other bg-white text-slate-700 px-5 py-3 text-sm border border-slate-100 shadow-sm">${msg.text}</div>
+                                <div class="text-[9px] mt-2 font-bold text-slate-300 uppercase tracking-tighter">${new Date(msg.timestamp?.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}</div>
+                            </div>
+                        </div>
+                    `;
+                    cont.insertAdjacentHTML('beforeend', html);
+                });
+                cont.scrollTop = cont.scrollHeight;
+            });
+        };
+
+        // 傳送訊息
+        window.sendMessage = async (e) => {
             e.preventDefault();
             const input = document.getElementById('message-input');
             const txt = input.value.trim();
@@ -423,7 +322,44 @@
             await updateDoc(doc(db, "chats", currentChatId), { lastMessage: txt, updatedAt: serverTimestamp() });
         };
 
-        // 5. Auth 監聽
+        // 載入聯絡人
+        window.loadContacts = async () => {
+            const snap = await getDoc(doc(db, "users", currentUser.uid));
+            const list = document.getElementById('contact-list');
+            list.innerHTML = "";
+            const ids = snap.data().contacts || [];
+            const blocked = snap.data().blockedUsers || [];
+            
+            for(const id of ids) {
+                if(blocked.includes(id)) continue;
+                const us = await getDoc(doc(db, "users", id));
+                if(us.exists()) {
+                    const u = us.data();
+                    const div = document.createElement('div');
+                    div.className = "group flex items-center gap-4 p-4 hover:bg-white rounded-[2rem] transition-all cursor-pointer border border-transparent hover:border-slate-100";
+                    div.innerHTML = `
+                        <div class="w-12 h-12 rounded-[1.2rem] bg-slate-100 bg-cover border border-white shadow-sm" style="background-image:url(${u.photoURL})"></div>
+                        <div class="flex-1">
+                            <div class="font-bold text-slate-800 text-sm">${u.displayName}</div>
+                            <div class="text-[10px] font-black text-slate-300 uppercase tracking-tighter">${u.email}</div>
+                        </div>
+                    `;
+                    div.onclick = () => window.startChat(u.uid);
+                    list.appendChild(div);
+                }
+            }
+        };
+
+        // 其他管理功能
+        window.deleteChat = async () => { if(confirm('刪除頻道？')) { await deleteDoc(doc(db, "chats", currentChatId)); window.closeChat(); } };
+        window.blockUser = async () => { if(confirm('封鎖此人？')) { 
+            const snap = await getDoc(doc(db, "chats", currentChatId));
+            const otherId = snap.data().members.find(m => m !== currentUser.uid);
+            await updateDoc(doc(db, "users", currentUser.uid), { blockedUsers: arrayUnion(otherId) });
+            window.closeChat();
+        }};
+
+        // ================= AUTH OBSERVER =================
         onAuthStateChanged(auth, async (u) => {
             if (u) {
                 currentUser = u;
@@ -440,7 +376,7 @@
                     document.getElementById('my-id').innerText = `ID: ${usnap.data().studentId}`;
                 }
 
-                // 監聽頻道列表
+                // 監聽頻道清單
                 const cq = query(collection(db, "chats"), where("members", "array-contains", u.uid));
                 onSnapshot(cq, (snap) => {
                     const list = document.getElementById('chat-list');
@@ -454,17 +390,15 @@
                         const otherSnap = await getDoc(doc(db, "users", otherId));
                         if(!otherSnap.exists()) return;
                         const otherData = otherSnap.data();
-                        
-                        // 檢查封鎖
                         if(usnap.data().blockedUsers?.includes(otherId)) return;
 
                         const html = `
-                            <div onclick="app.loadChat('${c.id}')" class="group p-4 flex items-center gap-4 hover:bg-white rounded-[2rem] cursor-pointer transition-all ${currentChatId === c.id ? 'bg-white shadow-lg ring-1 ring-slate-100' : ''}">
+                            <div onclick="window.loadChat('${c.id}')" class="group p-4 flex items-center gap-4 hover:bg-white rounded-[2rem] cursor-pointer transition-all ${currentChatId === c.id ? 'bg-white shadow-lg border-slate-100' : 'border-transparent'}">
                                 <div class="w-14 h-14 rounded-[1.5rem] bg-slate-100 bg-cover border border-slate-50 shadow-sm" style="background-image:url(${otherData.photoURL})"></div>
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-baseline mb-1">
                                         <div class="font-bold text-sm text-slate-800 truncate">${otherData.displayName}</div>
-                                        <div class="text-[9px] font-black text-slate-300 uppercase">${c.updatedAt ? ui.formatTime(c.updatedAt) : ''}</div>
+                                        <div class="text-[9px] font-black text-slate-300 uppercase">${c.updatedAt ? new Date(c.updatedAt.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}) : ''}</div>
                                     </div>
                                     <div class="text-xs text-slate-400 truncate font-medium">${c.lastMessage}</div>
                                 </div>
@@ -474,11 +408,11 @@
                     });
                 });
 
-                // QR 處理
+                // QR 自動啟動
                 const params = new URLSearchParams(window.location.search);
                 if(params.get('uid') && params.get('uid') !== u.uid) {
                     window.history.replaceState({}, document.title, window.location.pathname);
-                    app.startChat(params.get('uid'));
+                    window.startChat(params.get('uid'));
                 }
             } else {
                 document.getElementById('login-screen').classList.remove('hidden');
